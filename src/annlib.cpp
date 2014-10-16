@@ -16,6 +16,7 @@
 этой программой. Если это не так, см. http://www.gnu.org/licenses/gpl.html.
 */
 
+#define _USE_MATH_DEFINES
 #include <cfloat>
 #include <ctime>
 #include <omp.h>
@@ -27,7 +28,7 @@
 
 #include "annlib.h"
 
-#ifdef Q_WS_WIN
+#ifdef Q_OS_WIN
 #define ISNAN(x) _isnan(x)
 #define ISFINITE(x) _finite(x)
 #else
@@ -746,7 +747,7 @@ void CMultilayerPerceptron::calculate_outputs(float inputs[], float outputs[],
    Возвращаемое значение - вычисленное среднеквадратичное отклонение. */
 /*****************************************************************************/
 float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
-                                            int nSamples)
+                                           int nSamples)
 {
     if (nSamples <= 0)
     {
@@ -3868,6 +3869,9 @@ CResilientBackpropTraining::~CResilientBackpropTraining()
 void CResilientBackpropTraining::change_weights(int nEpoch,
                                                 TTrainingState& training_state)
 {
+    Q_UNUSED(nEpoch);
+    Q_UNUSED(training_state);
+
     int i, j, k, n, iStartWeight = 0, iWeight;
     float temp;
     float new_weight, new_rate;

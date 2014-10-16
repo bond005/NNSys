@@ -22,6 +22,8 @@
 extern long g_seedForRandom;
 
 double generate_random_value();
+double generate_random_value(double min_val, double max_val);
+double generate_normal_random_value();
 void initialize_random_generator(long value);
 
 #endif // RANDLIB_H

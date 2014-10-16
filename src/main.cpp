@@ -38,8 +38,6 @@ int main(int argc, char *argv[])
 
     QCoreApplication app(argc, argv);
     QTextCodec::setCodecForLocale(QTextCodec::codecForName("System"));
-    QTextCodec::setCodecForCStrings(QTextCodec::codecForName("System"));
-    QTextCodec::setCodecForTr(QTextCodec::codecForName("System"));
 
     int nResult = EXIT_SUCCESS;
 

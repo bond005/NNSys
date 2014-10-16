@@ -40,14 +40,6 @@ void do_softmax_normalization(float data[], int n);
 случайных индексов этих элементов aIndexes. */
 void calculate_rand_indexes(int aIndexes[], int nLength);
 
-/* Функция возвращает случайное вещественное число из равномерного
-распределения в диапазоне [min_value; max_value]. Используется системная
-функция rand(). */
-inline float get_random_value(float min_value, float max_value)
-{
-    return (generate_random_value() * (max_value - min_value) + min_value);
-};
-
 /* Функция возвращает случайное целое число из равномерного
 распределения в диапазоне [min_value; max_value]. Используется системная
 функция rand(). */

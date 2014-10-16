@@ -16,7 +16,10 @@
 этой программой. Если это не так, см. http://www.gnu.org/licenses/gpl.html.
 */
 
+#define _USE_MATH_DEFINES
+#include <cfloat>
 #include <climits>
+#include <cmath>
 
 #include "randlib.h"
 
@@ -98,6 +101,47 @@ double generate_random_value()
     else
     {
         result = temp;
+    }
+
+    return result;
+}
+
+double generate_random_value(double min_val, double max_val)
+{
+    if (fabs(max_val - min_val) <= FLT_EPSILON)
+    {
+        return min_val;
+    }
+    double res = generate_random_value();
+    return (min_val + res * (max_val - min_val));
+}
+
+double generate_normal_random_value()
+{
+    static int iset = 0;
+    static double gset;
+    double fac, rsq, v1, v2, result;
+
+    if (g_seedForRandom < 0)
+    {
+        iset = 0;
+    }
+    if (iset == 0)
+    {
+        do {
+            v1 = 2.0 * generate_random_value() - 1.0;
+            v2 = 2.0 * generate_random_value() - 1.0;
+            rsq = v1 * v1 + v2 * v2;
+        } while ((rsq >= 1.0) || (fabs(rsq) <= FLT_EPSILON));
+        fac = sqrt(-2.0 * log(rsq) / rsq);
+        gset = v1 * fac;
+        iset = 1;
+        result = v2 * fac;
+    }
+    else
+    {
+        iset = 0;
+        result = gset;
     }
 
     return result;

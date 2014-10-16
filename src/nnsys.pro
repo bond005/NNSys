@@ -22,6 +22,6 @@ HEADERS += additional_unit.h \
     trainer_unit.h \
     randlib.h \
     mathlib_bond005.h
-win32:QMAKE_CXXFLAGS += /openmp /fp:fast /Ox /arch:SSE2
+win32:QMAKE_CXXFLAGS += /fp:fast /Ox /arch:AVX /openmp
 unix:QMAKE_CXXFLAGS += -O3 -march=native -mfpmath=sse -msse2 -funroll-loops -ffast-math -fopenmp
 unix:QMAKE_LIBS+= -lgomp -lpthread
