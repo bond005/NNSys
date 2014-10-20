@@ -20,7 +20,7 @@
 #include <cfloat>
 #include <ctime>
 #include <omp.h>
-//#include <iostream> // for debug
+// #include <iostream> // for debug
 
 #include <QFile>
 #include <QDataStream>
@@ -38,11 +38,11 @@
 
 using namespace std;
 
-const float GOLD = 1.618034;
-const float CGOLD = 0.3819660;
+static const float GOLD = 1.618034;
+static const float CGOLD = 0.3819660;
 
-const int N_EXP = 20;
-const float X_EXP[] = {
+static const int N_EXP = 20;
+static const float X_EXP[] = {
     -15.000000000000000,
      -8.497847557067871,
      -6.363110065460205,
@@ -65,7 +65,7 @@ const float X_EXP[] = {
       0.830329835414886,
       1.000000000000000
 };
-const float A_EXP[] = {
+static const float A_EXP[] = {
     0.000031312843930,
     0.000712073408067,
     0.003474863944575,
@@ -87,7 +87,7 @@ const float A_EXP[] = {
     2.098088264465332,
     2.500183105468750
 };
-const float B_EXP[] = {
+static const float B_EXP[] = {
     0.000469998572953,
     0.006254998035729,
     0.023834938183427,
@@ -109,7 +109,7 @@ const float B_EXP[] = {
     0.551970005035400,
     0.218098640441895
 };
-const float Y_EXP_0 = A_EXP[0] * X_EXP[0] + B_EXP[0];
+static const float Y_EXP_0 = A_EXP[0] * X_EXP[0] + B_EXP[0];
 
 #define SHFT(a, b, c, d) (a) = (b); (b) = (c); (c) = (d);
 #define SIGN(a,b) ((b) >= 0.0 ? fabs(a) : -fabs(a))
@@ -4516,6 +4516,64 @@ float regression_error(float output, float target)
         result = 0.0;
     }
     return (100.0 * result);
+}
+
+/* Сравнить по содержимому два сигнала обучающего множества aSignal1[] и
+aSignal2[] (неважно, входные это сигналы или желаемые выходные) одинакового
+размера nSignalSize. Вернуть true, если все компоненты входных сигналов
+одинаковы, и false, если обнаружены различия */
+bool same_train_signals(const float aSignal1[], const float aSignal2[],
+                        int nSignalSize)
+{
+    if ((aSignal1 == 0) && (aSignal2 == 0))
+    {
+        return (nSignalSize == 0);
+    }
+    if (nSignalSize < 0)
+    {
+        return false;
+    }
+    if (nSignalSize == 0)
+    {
+        return true;
+    }
+    if ((aSignal1 == 0) || (aSignal2 == 0))
+    {
+        return false;
+    }
+
+    bool res = true;
+    float diff;
+    for (int i = 0; i < nSignalSize; i++)
+    {
+        diff = fabs(aSignal1[i] - aSignal2[i]);
+        if (diff > FLT_EPSILON)
+        {
+            res = false;
+            break;
+        }
+    }
+    return res;
+}
+
+/* Найти номер максимального компонента в сигнале aSignal[] размером
+nSignalSize. */
+int find_maximum_component(const float aSignal[], int nSignalSize)
+{
+    if ((aSignal == 0) || (nSignalSize <= 0))
+    {
+        return -1;
+    }
+
+    int i, res = 0;
+    for (i = 1; i < nSignalSize; i++)
+    {
+        if (aSignal[i] > aSignal[res])
+        {
+            res = i;
+        }
+    }
+    return res;
 }
 
 /* Загрузить из файла sFileName обучающее множество - набор входных сигналов

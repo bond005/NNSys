@@ -29,7 +29,8 @@ enum TExecutionMode {UNKNOWN_MODE,
                      SET_MLP_STRUCTURE, GET_MLP_STRUCTURE, SET_MLP_WEIGHT,
                      GET_MLP_WEIGHT, INITIALIZE_MLP, TRAIN_MLP, USE_MLP,
                      SHOW_TRAINSET, SEPARATE_TRAINSET,
-                     CSV_TO_TRAINSET, TRAINSET_TO_CSV
+                     CSV_TO_TRAINSET, TRAINSET_TO_CSV,
+                     PROCESS_DIVERGENT_SAMPLES,
                     };
 
 using namespace std;
@@ -256,6 +257,26 @@ bool CSVtoTrainset(const TCmdParams& rCmdParams);
 ошибки возвращается false и на экран выводится сообщение о соответствующей
 ошибке. */
 bool trainsetToCSV(const TCmdParams& rCmdParams);
+
+/* Обработать "противоречивые" примеры обучающего множества, т.е. такие, у
+которых входные сигналы одинаковы, а желаемые выходные сигналы разные. Под
+обработкой понимается одна из трёх операций: вывод на экран номеров
+противоречивых примеров, удаление всех противоречивых примеров либо же
+объединение противоречивых примеров с одинаковыми входными сигналами.
+   ВХОДНЫЕ АРГУМЕНТЫ
+   rCmpParams - список параметров командной строки в виде пары "ключ-значение".
+Для данной функции (разделения исходного обучающего множества на собственно
+обучающее и контрольное подмножества) в списке должно быть два ключа:
+"trainset" и "divergent":
+   1. "trainset" - ключ, значением которого является строка с названием файла,
+содержащего анализируемое обучающее множество.
+   2. "divergent" - ключ, значением которого является команда обработки
+противоречивых примеров обучающего множества: "show", "remove" или "unite".
+   ВОЗВРАЩАЕМЫЙ РЕЗУЛЬТАТ
+   Если функция успешно завершила свою работу, то возвращается true. В случае
+ошибки возвращается false и на экран выводится сообщение о соответствующей
+ошибке. */
+bool processDivergentTrainSamples(const TCmdParams& rCmdParams);
 
 #endif // COMMANDS_UNIT_H
 

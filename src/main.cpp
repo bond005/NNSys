@@ -133,6 +133,12 @@ int main(int argc, char *argv[])
                     nResult = EXIT_FAILURE;
                 }
                 break;
+            case PROCESS_DIVERGENT_SAMPLES:
+                if (!processDivergentTrainSamples(cmd_params))
+                {
+                    nResult = EXIT_FAILURE;
+                }
+                break;
             }
         }
         else

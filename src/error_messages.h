@@ -68,5 +68,8 @@ extern const char* g_szIncorrectGoal;
 extern const char* g_szIncorrectInputsNumber;
 extern const char* g_szIncorrectOutputsNumber;
 extern const char* g_szCSVReadingError;
+extern const char* g_szCSVWritingError;
+extern const char* g_szUnknownDivergentProcessing;
+extern const char* g_szDivergentSearchImpossible;
 
 #endif // ERROR_MESSAGES_H

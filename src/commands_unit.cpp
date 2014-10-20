@@ -16,6 +16,7 @@
 этой программой. Если это не так, см. http://www.gnu.org/licenses/gpl.html.
 */
 
+#include <cstring>
 #include <ctime>
 #include <ctype.h>
 #include <fstream>
@@ -34,26 +35,45 @@
 
 using namespace std;
 
-const char *g_szAllInputsProcessingDuration = "Общее время обработки всех "\
-        "входных сигналов составляет %1 сек.";
-const char *g_szOneInputProcessingDurationAtSecs = "Среднее время обработки "\
-        "одного входного сигнала составляет %1 сек.";
-const char *g_szOneInputProcessingDurationAtMsecs = "Среднее время обработки "\
-        "одного входного сигнала составляет %1 мсек.";
-const char *g_szTotalWeightsNumber = "Общее количество весов: %1.";
-const char *g_szLayersNumber = "Количество слоёв: %1.";
-const char *g_szInputsNumber = "Размер входного сигнала: %1.";
-const char *g_szLayerNumber = "%1-й слой";
-const char *g_szTrainSamplesNumber = "Количество обучающих примеров:     %1.";
-const char *g_szTrainInputsNumber  = "Размер входного сигнала:           %1.";
-const char *g_szTrainTargetsNumber = "Размер желаемого выходного сигнала: %1.";
-const char *g_szClassificationError = "Ошибка классификации составила %1%.";
-const char *g_szRegressionError = "Ошибка регрессии составила %1%%.";
-const char *g_szMeanSquareError = "Среднеквадратичная ошибка составила %1.";
-const char *g_szLayerName = "Слой %1:";
-const char *g_szNeuronName = "    Нейрон %1:";
-const char *g_szWeightName = "        Вес %1:";
-const char *g_szBiasName = "        Смещение:";
+static const char *g_szAllInputsProcessingDuration = "Общее время обработки "\
+        "всех входных сигналов составляет %1 сек.";
+static const char *g_szOneInputProcessingDurationAtSecs = "Среднее время "\
+        "обработки одного входного сигнала составляет %1 сек.";
+static const char *g_szOneInputProcessingDurationAtMsecs = "Среднее время "\
+        "обработки одного входного сигнала составляет %1 мсек.";
+static const char *g_szTotalWeightsNumber = "Общее количество весов: %1.";
+static const char *g_szLayersNumber = "Количество слоёв: %1.";
+static const char *g_szInputsNumber = "Размер входного сигнала: %1.";
+static const char *g_szLayerNumber = "%1-й слой";
+static const char *g_szTrainSamplesNumber = "Количество обучающих примеров:"\
+        "     %1.";
+static const char *g_szTrainInputsNumber  = "Размер входного сигнала:      "\
+        "     %1.";
+static const char *g_szTrainTargetsNumber = "Размер желаемого выходного "\
+        "сигнала: %1.";
+static const char *g_szClassificationError = "Ошибка классификации составила"\
+        " %1%.";
+static const char *g_szRegressionError = "Ошибка регрессии составила %1%%.";
+static const char *g_szMeanSquareError = "Среднеквадратичная ошибка "\
+        "составила %1.";
+static const char *g_szLayerName = "Слой %1:";
+static const char *g_szNeuronName = "    Нейрон %1:";
+static const char *g_szWeightName = "        Вес %1:";
+static const char *g_szBiasName = "        Смещение:";
+
+static const char *g_szClassificationTask = "class";
+static const char *g_szRegressionTask = "reg";
+
+static const char *g_szShowDivergentSamples = "show";
+static const char *g_szRemoveDivergentSamples = "remove";
+static const char *g_szUniteDivergentSamples = "unite";
+static const char *g_szNoDivergentSamples = "В обучающем множестве нет "\
+        "противоречивых примеров.";
+static const char *g_szAllSamplesAreDivergent = "В обучающем множестве все "\
+        "примеры являются противоречивыми.";
+static const char *g_szGroupOfDivergentSamples1 = "%1-я группа (%2 пример):";
+static const char *g_szGroupOfDivergentSamples2 = "%1-я группа (%2 примера):";
+static const char *g_szGroupOfDivergentSamples3 = "%1-я группа (%2 примеров):";
 
 /*****************************************************************************/
 /* ВНУТРЕННИЕ ФУНКЦИИ МОДУЛЯ commands_unit.cpp */
@@ -1411,6 +1431,14 @@ bool check_params_for_trainsetToCSV(const TCmdParams& rCmdParams)
     bool result;
     if (rCmdParams.size() != 3)
     {
+        if (rCmdParams.size() < 3)
+        {
+            cerr << qPrintable(QString(g_szFewArgs));
+        }
+        else
+        {
+            cerr << qPrintable(QString(g_szManyArgs));
+        }
         result = false;
     }
     else
@@ -1473,6 +1501,425 @@ bool check_params_for_trainsetToCSV(const TCmdParams& rCmdParams)
         }
     }
     return result;
+}
+
+/* Проверка правильности структуры перечня "ключ-значение" rCmdParams для
+функции processDivergentTrainSamples, выполняющей выявление и обработку
+противоречивых примеров в обучающем множестве. */
+bool check_params_for_processDivergentTrainSamples(const TCmdParams&rCmdParams)
+{
+    bool result;
+    int nNumberOfCmdParams = rCmdParams.size();
+    if ((nNumberOfCmdParams != 2) && (nNumberOfCmdParams != 3))
+    {
+        if (nNumberOfCmdParams < 2)
+        {
+            cerr << qPrintable(QString(g_szFewArgs));
+        }
+        else
+        {
+            cerr << qPrintable(QString(g_szManyArgs));
+        }
+        result = false;
+    }
+    else
+    {
+        if (rCmdParams.contains("divergent"))
+        {
+            if (rCmdParams["divergent"].isEmpty())
+            {
+                cerr << qPrintable(QString(g_szNullVal).arg("divergent"));
+                result = false;
+            }
+            else
+            {
+                QString sValue = rCmdParams["divergent"];
+                if ((sValue.compare(g_szShowDivergentSamples,
+                                    Qt::CaseInsensitive) == 0)
+                        || (sValue.compare(g_szRemoveDivergentSamples,
+                                           Qt::CaseInsensitive) == 0)
+                        || (sValue.compare(g_szUniteDivergentSamples,
+                                           Qt::CaseInsensitive) == 0))
+                {
+                    nNumberOfCmdParams--;
+                    if ((sValue.compare(g_szUniteDivergentSamples,
+                                        Qt::CaseInsensitive) == 0))
+                    {
+                        if (nNumberOfCmdParams > 0)
+                        {
+                            if (rCmdParams.contains("task"))
+                            {
+                                nNumberOfCmdParams--;
+                                if ((rCmdParams["task"].compare(
+                                         g_szClassificationTask,
+                                         Qt::CaseInsensitive) == 0)
+                                        || (rCmdParams["task"].compare(
+                                                g_szRegressionTask,
+                                                Qt::CaseInsensitive) == 0))
+                                {
+                                    result = true;
+                                }
+                                else
+                                {
+                                    result = false;
+                                    cerr << qPrintable(g_szIncorrectTask);
+                                }
+                            }
+                            else
+                            {
+                                cerr << qPrintable(
+                                            QString(g_szArgIsNotFound).arg(
+                                                "task"));
+                                result = false;
+                            }
+                        }
+                        else
+                        {
+                            result = false;
+                            cerr << qPrintable(QString(g_szFewArgs));
+                        }
+                    }
+                    else
+                    {
+                        result = true;
+                    }
+                }
+                else
+                {
+                    result = false;
+                    cerr<<qPrintable(QString(g_szUnknownDivergentProcessing));
+                }
+            }
+        }
+        else
+        {
+            cerr << qPrintable(QString(g_szArgIsNotFound).arg("divergent"));
+            result = false;
+        }
+        if (result)
+        {
+            if (rCmdParams.contains("trainset"))
+            {
+                if (rCmdParams["trainset"].isEmpty())
+                {
+                    cerr << qPrintable(QString(g_szNullVal).arg("trainset"));
+                    result = false;
+                }
+                else
+                {
+                    nNumberOfCmdParams--;
+                }
+            }
+            else
+            {
+                cerr << qPrintable(QString(g_szArgIsNotFound).arg("trainset"));
+                result = false;
+            }
+        }
+        if (result && (nNumberOfCmdParams > 0))
+        {
+            result = false;
+            cerr << qPrintable(QString(g_szManyArgs));
+        }
+    }
+    return result;
+}
+
+/* В обучающем множестве найти группы противоречивых примеров, у которых
+входные сигналы одинаковы, а желаемые выходные - разные.
+   Обучающее множество задано последовательностью входных сигналов aTrainInputs
+и последовательностью желаемых выходных сигналов aTrainTargets. Количество
+входных сигналов соответствует количеству желаемых выходных сигналов и
+составляет nSamplesNumber. Размер входного сигнала равен nInputSize, а размер
+желаемого выходного сигнала - nOutputSize.
+   В результате своей работы функция формирует двухуровневый список
+aGroupsOfDivergentSamples, на первом уровне которого - группы противоречивых
+примеров, а на втором уровне - индексы противоречивых примеров в обучающем
+множестве для каждой из групп. */
+void find_divergent_samples_in_train_set(
+        const float aTrainInputs[], const float aTrainTargets[],
+        int nSamplesNumber, int nInputSize, int nOutputSize,
+        QList<QList<int> >& aGroupsOfDivergentSamples)
+{
+    int i, ind1, ind2;
+    QList<QList<int> >::iterator it1, it2;
+    QList<int> aNewGroup;
+
+    aGroupsOfDivergentSamples.clear();
+    for (i = 0; i < nSamplesNumber; i++)
+    {
+        aNewGroup.clear();
+        aNewGroup.append(i);
+        aGroupsOfDivergentSamples.append(aNewGroup);
+    }
+
+    it1 = aGroupsOfDivergentSamples.begin();
+    while (it1 != aGroupsOfDivergentSamples.end())
+    {
+        ind1 = (*it1).first();
+        it2 = it1 + 1;
+        while (it2 != aGroupsOfDivergentSamples.end())
+        {
+            ind2 = (*it2).first();
+            if (same_train_signals(&aTrainInputs[ind1 * nInputSize],
+                                   &aTrainInputs[ind2 * nInputSize],
+                                   nInputSize))
+            {
+                if (!same_train_signals(&aTrainTargets[ind1 * nOutputSize],
+                                        &aTrainTargets[ind2 * nOutputSize],
+                                        nOutputSize))
+                {
+                    (*it1).append(ind2);
+                    it2 = aGroupsOfDivergentSamples.erase(it2);
+                }
+                else
+                {
+                    it2++;
+                }
+            }
+            else
+            {
+                it2++;
+            }
+        }
+        it1++;
+    }
+
+    it1 = aGroupsOfDivergentSamples.begin();
+    while (it1 != aGroupsOfDivergentSamples.end())
+    {
+        if ((*it1).size() <= 1)
+        {
+            it1 = aGroupsOfDivergentSamples.erase(it1);
+        }
+        else
+        {
+            it1++;
+        }
+    }
+}
+
+/* Вывести на экран информацию о группах противоречивых примеров обучающего
+множества, представленную в двухуровневом списке aGroupsOfDivergentSamples
+(на первом уровне этого списка - группы противоречивых примеров, а на втором
+уровне - индексы противоречивых примеров в обучающем множестве для каждой из
+групп). */
+void print_divergent_samples(
+        const QList<QList<int> >& aGroupsOfDivergentSamples)
+{
+    QList<QList<int> >::const_iterator it1;
+    QList<int>::const_iterator it2;
+    int i, n;
+    QString sTmp;
+
+    i = 1;
+    for (it1 = aGroupsOfDivergentSamples.begin();
+         it1 != aGroupsOfDivergentSamples.end();
+         it1++)
+    {
+        n = (*it1).size();
+        sTmp = QString::number(n);
+        if (sTmp.size() == 1)
+        {
+            if (sTmp[0] == '1')
+            {
+                cout << qPrintable(QString(g_szGroupOfDivergentSamples1).arg(
+                                       i).arg(n));
+            }
+            else if ((sTmp[0] == '2') || (sTmp[0] == '3') || (sTmp[0] == '4'))
+            {
+                cout << qPrintable(QString(g_szGroupOfDivergentSamples2).arg(
+                                       i).arg(n));
+            }
+            else
+            {
+                cout << qPrintable(QString(g_szGroupOfDivergentSamples3).arg(
+                                       i).arg(n));
+            }
+        }
+        else
+        {
+            if (sTmp[sTmp.size()-2] == '1')
+            {
+                cout << qPrintable(QString(g_szGroupOfDivergentSamples3).arg(
+                                       i).arg(n));
+            }
+            else
+            {
+                if (sTmp[sTmp.size()-1] == '1')
+                {
+                    cout<<qPrintable(QString(g_szGroupOfDivergentSamples1).arg(
+                                         i).arg(n));
+                }
+                else if ((sTmp[sTmp.size()-1] == '2')
+                         || (sTmp[sTmp.size()-1] == '3')
+                         || (sTmp[sTmp.size()-1] == '4'))
+                {
+                    cout<<qPrintable(QString(g_szGroupOfDivergentSamples2).arg(
+                                         i).arg(n));
+                }
+                else
+                {
+                    cout<<qPrintable(QString(g_szGroupOfDivergentSamples3).arg(
+                                         i).arg(n));
+                }
+            }
+        }
+
+        it2 = (*it1).begin();
+        cout << ' ' << (*it2);
+        it2++;
+        while (it2 != (*it1).end())
+        {
+            cout << ", " << (*it2);
+            it2++;
+        }
+        cout << '.' << endl;
+
+        i++;
+    }
+}
+
+/* Удалить из обучающего множества все противоречивые примеры и вернуть новое
+количество примеров в этом обучающем множестве.
+   Обучающее множество задано последовательностью входных сигналов aTrainInputs
+и последовательностью желаемых выходных сигналов aTrainTargets. Количество
+входных сигналов соответствует количеству желаемых выходных сигналов и
+составляет nSamplesNumber. Размер входного сигнала равен nInputSize, а размер
+желаемого выходного сигнала - nOutputSize.
+   Группы противоречивых примеров заданы двухуровневым списком
+aGroupsOfDivergentSamples, на первом уровне которого - группы противоречивых
+примеров, а на втором уровне - индексы противоречивых примеров в обучающем
+множестве для каждой из групп. */
+int remove_divergent_samples(
+        float aTrainInputs[], float aTrainTargets[],
+        int nSamplesNumber, int nInputSize, int nOutputSize,
+        const QList<QList<int> >& aGroupsOfDivergentSamples)
+{
+    QVector<bool> aRemovedSamples(nSamplesNumber);
+    QList<QList<int> >::const_iterator it1;
+    QList<int>::const_iterator it2;
+    int i, j = 0, res = nSamplesNumber;
+
+    aRemovedSamples.fill(false);
+    for (it1 = aGroupsOfDivergentSamples.begin();
+         it1 != aGroupsOfDivergentSamples.end();
+         it1++)
+    {
+        for (it2 = (*it1).begin(); it2 != (*it1).end(); it2++)
+        {
+            aRemovedSamples[*it2] = true;
+        }
+    }
+
+    for (i = 0; i < nSamplesNumber; i++)
+    {
+        if (aRemovedSamples[i])
+        {
+            if (j < (res-1))
+            {
+                memmove(&aTrainInputs[j*nInputSize],
+                        &aTrainInputs[(j+1)*nInputSize],
+                        (res-j-1)*nInputSize*sizeof(float));
+                memmove(&aTrainTargets[j*nOutputSize],
+                        &aTrainTargets[(j+1)*nOutputSize],
+                        (res-j-1)*nOutputSize*sizeof(float));
+            }
+            res--;
+        }
+        else
+        {
+            j++;
+        }
+    }
+    return res;
+}
+
+int unite_divergent_samples(
+        float aTrainInputs[], float aTrainTargets[],
+        int nSamplesNumber, int nInputSize, int nOutputSize,
+        const QList<QList<int> >& aGroupsOfDivergentSamples,
+        TSolvedTask task)
+{
+    QVector<bool> aRemovedSamples(nSamplesNumber);
+    QList<QList<int> >::const_iterator it1;
+    QList<int>::const_iterator it2, it3;
+    int i, j, n, iMax, res;
+    QVector<float> aTempOutput(nOutputSize);
+
+    aRemovedSamples.fill(false);
+    for (it1 = aGroupsOfDivergentSamples.begin();
+         it1 != aGroupsOfDivergentSamples.end();
+         it1++)
+    {
+        it2 = (*it1).begin();
+        n = 1;
+
+        if ((task == taskREGRESSION)
+                || ((task == taskCLASSIFICATION) && (nOutputSize == 1)))
+        {
+            for (it3 = it2+1; it3 != (*it1).end(); it3++)
+            {
+                for (i = 0; i < nOutputSize; i++)
+                {
+                    aTrainTargets[(*it2) * nOutputSize + i]
+                            += aTrainTargets[(*it3) * nOutputSize + i];
+                }
+                n++;
+                aRemovedSamples[*it3] = true;
+            }
+
+            for (i = 0; i < nInputSize; i++)
+            {
+                aTrainInputs[(*it2) * nInputSize + i] /= n;
+            }
+            for (i = 0; i < nOutputSize; i++)
+            {
+                aTrainTargets[(*it2) * nOutputSize + i] /= n;
+            }
+        }
+        else
+        {
+            aTempOutput.fill(-1.0);
+            iMax = find_maximum_component(
+                        &aTrainTargets[(*it2) * nOutputSize], nOutputSize);
+            aTempOutput[iMax] = 1.0;
+            for (it3 = it2+1; it3 != (*it1).end(); it3++)
+            {
+                iMax = find_maximum_component(
+                            &aTrainTargets[(*it3) * nOutputSize], nOutputSize);
+                aTempOutput[iMax] = 1.0;
+                aRemovedSamples[*it3] = true;
+            }
+            for (i = 0; i < nOutputSize; i++)
+            {
+                aTrainTargets[(*it2) * nOutputSize + i] = aTempOutput[i];
+            }
+        }
+    }
+
+    j = 0; res = nSamplesNumber;
+    for (i = 0; i < nSamplesNumber; i++)
+    {
+        if (aRemovedSamples[i])
+        {
+            if (j < (res-1))
+            {
+                memmove(&aTrainInputs[j*nInputSize],
+                        &aTrainInputs[(j+1)*nInputSize],
+                       (res-j-1)*nInputSize*sizeof(float));
+                memmove(&aTrainTargets[j*nOutputSize],
+                        &aTrainTargets[(j+1)*nOutputSize],
+                        (res-j-1)*nOutputSize*sizeof(float));
+            }
+            res--;
+        }
+        else
+        {
+            j++;
+        }
+    }
+    return res;
 }
 
 /* Вывести на экран временные характеристики (суммарное время обработки
@@ -1665,7 +2112,14 @@ TExecutionMode detect_mode(const TCmdParams& rCmdParams)
                 }
                 else
                 {
-                    result = SHOW_TRAINSET;
+                    if (rCmdParams.contains("divergent"))
+                    {
+                        result = PROCESS_DIVERGENT_SAMPLES;
+                    }
+                    else
+                    {
+                        result = SHOW_TRAINSET;
+                    }
                 }
             }
         }
@@ -2306,7 +2760,7 @@ bool useMLP(const TCmdParams& rCmdParams)
             if (rCmdParams.contains("task"))
             {
                 if (rCmdParams["task"].compare(
-                        "class", Qt::CaseInsensitive) == 0)
+                            g_szClassificationTask, Qt::CaseInsensitive) == 0)
                 {
                     bDurationIsCalculated = true;
                     start_time = time(0);
@@ -2318,7 +2772,7 @@ bool useMLP(const TCmdParams& rCmdParams)
                                            error)) << endl;
                 }
                 else if (rCmdParams["task"].compare(
-                        "reg", Qt::CaseInsensitive) == 0)
+                             g_szRegressionTask, Qt::CaseInsensitive) == 0)
                 {
                     bDurationIsCalculated = true;
                     start_time = time(0);
@@ -2880,7 +3334,165 @@ bool trainsetToCSV(const TCmdParams& rCmdParams)
             }
             if (!result)
             {
-                cerr << qPrintable(QString(g_szCSVReadingError).arg(sCSV));
+                cerr << qPrintable(QString(g_szCSVWritingError).arg(sCSV));
+            }
+        }
+        if (aInputs != 0)
+        {
+            delete[] aInputs;
+            aInputs = 0;
+        }
+        if (aOutputs != 0)
+        {
+            delete[] aOutputs;
+            aOutputs = 0;
+        }
+    }
+    catch(...)
+    {
+        if (aInputs != 0)
+        {
+            delete[] aInputs;
+            aInputs = 0;
+        }
+        if (aOutputs != 0)
+        {
+            delete[] aOutputs;
+            aOutputs = 0;
+        }
+        throw;
+    }
+
+    return result;
+}
+
+/* Обработать "противоречивые" примеры обучающего множества, т.е. такие, у
+которых входные сигналы одинаковы, а желаемые выходные сигналы разные. Под
+обработкой понимается одна из трёх операций: вывод на экран номеров
+противоречивых примеров, удаление всех противоречивых примеров либо же
+объединение противоречивых примеров с одинаковыми входными сигналами.
+   ВХОДНЫЕ АРГУМЕНТЫ
+   rCmpParams - список параметров командной строки в виде пары "ключ-значение".
+Для данной функции (разделения исходного обучающего множества на собственно
+обучающее и контрольное подмножества) в списке должно быть два ключа:
+"trainset" и "divergent":
+   1. "trainset" - ключ, значением которого является строка с названием файла,
+содержащего анализируемое обучающее множество.
+   2. "divergent" - ключ, значением которого является команда обработки
+противоречивых примеров обучающего множества: "show", "remove" или "unite".
+   ВОЗВРАЩАЕМЫЙ РЕЗУЛЬТАТ
+   Если функция успешно завершила свою работу, то возвращается true. В случае
+ошибки возвращается false и на экран выводится сообщение о соответствующей
+ошибке. */
+bool processDivergentTrainSamples(const TCmdParams& rCmdParams)
+{
+    if (!check_params_for_processDivergentTrainSamples(rCmdParams))
+    {
+        return false;
+    }
+
+    QString sTrainSet = rCmdParams["trainset"];
+    QString sCommandName = rCmdParams["divergent"];
+    int nCommandType, nSamples = 0, nInputs = 0, nOutputs = 0;
+    float *aInputs = 0, *aOutputs = 0;
+    bool result = true;
+
+    if (sCommandName.compare(g_szRemoveDivergentSamples,
+                             Qt::CaseInsensitive) == 0)
+    {
+        nCommandType = 1;
+    }
+    else if (sCommandName.compare(g_szUniteDivergentSamples,
+                                  Qt::CaseInsensitive) == 0)
+    {
+        nCommandType = 2;
+    }
+    else
+    {
+        nCommandType = 0;
+    }
+
+    try
+    {
+        if (load_trainset(sTrainSet, 0, 0, nSamples, nInputs, nOutputs))
+        {
+            if (nOutputs <= 0)
+            {
+                result = false;
+                cerr << qPrintable(g_szDivergentSearchImpossible);
+            }
+        }
+        else
+        {
+            cerr << qPrintable(QString(g_szTrainsetReadingError).arg(
+                                   sTrainSet));
+            result = false;
+        }
+        if (result)
+        {
+            aInputs = new float[nSamples * nInputs];
+            aOutputs = new float[nSamples * nOutputs];
+            if (!load_trainset(sTrainSet, aInputs, aOutputs, nSamples, nInputs,
+                               nOutputs))
+            {
+                cerr << qPrintable(QString(g_szTrainsetReadingError).arg(
+                                       sTrainSet));
+                result = false;
+            }
+        }
+        if (result)
+        {
+            QList<QList<int> > aGroupsOfDivergentSamples;
+            find_divergent_samples_in_train_set(
+                        aInputs, aOutputs, nSamples, nInputs, nOutputs,
+                        aGroupsOfDivergentSamples);
+            if (aGroupsOfDivergentSamples.isEmpty())
+            {
+                cout << qPrintable(g_szNoDivergentSamples) << std::endl;
+            }
+            else if ((aGroupsOfDivergentSamples.size() == 1)
+                     && (aGroupsOfDivergentSamples.at(0).size() == nSamples))
+            {
+                cout << qPrintable(g_szAllSamplesAreDivergent) << std::endl;
+            }
+            else
+            {
+                if (nCommandType == 0)
+                {
+                    print_divergent_samples(aGroupsOfDivergentSamples);
+                }
+                else
+                {
+                    if (nCommandType == 1)
+                    {
+                        nSamples = remove_divergent_samples(
+                                    aInputs,aOutputs,nSamples,nInputs,nOutputs,
+                                    aGroupsOfDivergentSamples);
+                    }
+                    else
+                    {
+                        TSolvedTask task;
+                        if (rCmdParams["task"].compare(g_szClassificationTask,
+                                                       Qt::CaseInsensitive)==0)
+                        {
+                            task = taskCLASSIFICATION;
+                        }
+                        else
+                        {
+                            task = taskREGRESSION;
+                        }
+                        nSamples = unite_divergent_samples(
+                                    aInputs,aOutputs,nSamples,nInputs,nOutputs,
+                                    aGroupsOfDivergentSamples, task);
+                    }
+                    if (!save_trainset(sTrainSet, aInputs, aOutputs,
+                                       nSamples, nInputs, nOutputs))
+                    {
+                        cerr<<qPrintable(QString(g_szTrainsetWritingError).arg(
+                                             sTrainSet));
+                        result = false;
+                    }
+                }
             }
         }
         if (aInputs != 0)

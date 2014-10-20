@@ -29,35 +29,35 @@
 #include "error_messages.h"
 #include "trainer_unit.h"
 
-namespace MessagesForLog
-{
-    const char* g_szAboutTrainingStart   = "Обучение начато.";
-    const char* g_szTrainSetSamples      = "Кол-во примеров обучающего мн-ва:   %1";
-    const char* g_szControlSetSamples    = "Кол-во примеров контрольного мн-ва: %1";
-    const char* g_szTrainedNetWeigths    = "Кол-во весов обучаемой нейросети:   %1";
+static const char* g_szAboutTrainingStart   = "Обучение начато.";
+static const char* g_szTrainSetSamples      = "Кол-во примеров обучающего "\
+        "мн-ва:   %1";
+static const char* g_szControlSetSamples    = "Кол-во примеров контрольного "\
+        "мн-ва: %1";
+static const char* g_szTrainedNetWeigths    = "Кол-во весов обучаемой "\
+        "нейросети:   %1";
 
-    const char* g_szEpochTitle               = "№ эпохи";
-    const char* g_szTrainingErrorTitle       = "   Ошибка обучения";
-    const char* g_szGeneralizationErrorTitle = "  Ошибка обобщения";
+static const char* g_szEpochTitle               = "№ эпохи";
+static const char* g_szTrainingErrorTitle       = "   Ошибка обучения";
+static const char* g_szGeneralizationErrorTitle = "  Ошибка обобщения";
 
-    const char* g_szStoppingByMaxEpochs  = "Обучение остановлено по "\
-            "достижении максимального количества эпох.";
-    const char* g_szEarlyStopping        = "Обучение остановлено вследствие "\
-            "возрастания ошибки обобщения.";
-    const char* g_szStoppingByGradient   = "Обучение остановлено по причине "\
-            "слишком малого значения нормы градиента.";
-    const char* g_szStoppingByMinError   = "Обучение остановлено из-за "\
-            "невозможности дальнейшего уменьшения ошибки обучения.";
-    const char* g_szStoppingByTrainingError = "Обучение остановлено по "\
-            "достижении достаточно малого значения ошибки обучения.";
-    const char* g_szStoppingByGeneralizationError = "Обучение остановлено по "\
-            "достижении достаточно малого значения ошибки обобщения.";
-    const char* g_szEpochDuration        = "Средняя продолжительность одной "\
-            "эпохи обучения составила %1 сек.";
-    const char* g_szEpochDurationDetails = "При этом собственно обучение "\
-            "заняло %1 сек, а тестирование (вычисление ошибки) заняло %1 сек.";
-    const char* g_szNewRestart = "Запущен %1-й рестарт процесса обучения.";
-}
+static const char* g_szStoppingByMaxEpochs  = "Обучение остановлено по "\
+        "достижении максимального количества эпох.";
+static const char* g_szEarlyStopping        = "Обучение остановлено "\
+        "вследствие возрастания ошибки обобщения.";
+static const char* g_szStoppingByGradient   = "Обучение остановлено по "\
+        "причине слишком малого значения нормы градиента.";
+static const char* g_szStoppingByMinError   = "Обучение остановлено из-за "\
+        "невозможности дальнейшего уменьшения ошибки обучения.";
+static const char* g_szStoppingByTrainingError = "Обучение остановлено по "\
+        "достижении достаточно малого значения ошибки обучения.";
+static const char* g_szStoppingByGeneralizationError = "Обучение остановлено "\
+        "по достижении достаточно малого значения ошибки обобщения.";
+static const char* g_szEpochDuration        = "Средняя продолжительность "\
+        "одной эпохи обучения составила %1 сек.";
+static const char* g_szEpochDurationDetails = "При этом собственно обучение "\
+        "заняло %1 сек, а тестирование (вычисление ошибки) заняло %1 сек.";
+static const char* g_szNewRestart = "Запущен %1-й рестарт процесса обучения.";
 
 using namespace std;
 
@@ -1158,7 +1158,7 @@ bool CTrainerForMLP::do_training()
         for (int i = 1; i <= m_nRestarts; i++)
         {
             cout << endl << endl;
-            cout << qPrintable(QString(MessagesForLog::g_szNewRestart).arg(i));
+            cout << qPrintable(QString(g_szNewRestart).arg(i));
             cout << endl << endl;
 
             m_nEpochsCount = 0;
@@ -1385,19 +1385,19 @@ void CTrainerForMLP::start_training()
         QString sInfoMsg;
         double training_error = 0.0;
 
-        sInfoMsg = QString(MessagesForLog::g_szAboutTrainingStart);
+        sInfoMsg = QString(g_szAboutTrainingStart);
         cout << qPrintable(sInfoMsg) << endl;
 
-        sInfoMsg = QString(MessagesForLog::g_szTrainedNetWeigths);
+        sInfoMsg = QString(g_szTrainedNetWeigths);
         cout << qPrintable(sInfoMsg.arg(m_TrainedNet.getAllWeightsCount()))
              << endl;
 
-        sInfoMsg = QString(MessagesForLog::g_szTrainSetSamples);
+        sInfoMsg = QString(g_szTrainSetSamples);
         cout << qPrintable(sInfoMsg.arg(m_nTrainSamples)) << endl;
 
         if (m_nControlSamples > 0)
         {
-            sInfoMsg = QString(MessagesForLog::g_szControlSetSamples);
+            sInfoMsg = QString(g_szControlSetSamples);
             cout << qPrintable(sInfoMsg.arg(m_nControlSamples)) << endl;
         }
 
@@ -1420,16 +1420,16 @@ void CTrainerForMLP::start_training()
             }
         }
 
-        sInfoMsg = QString(MessagesForLog::g_szEpochTitle);
+        sInfoMsg = QString(g_szEpochTitle);
         cout << endl << qPrintable(sInfoMsg);
         if (m_bShowTrainingError)
         {
-            sInfoMsg = QString(MessagesForLog::g_szTrainingErrorTitle);
+            sInfoMsg = QString(g_szTrainingErrorTitle);
             cout << qPrintable(sInfoMsg);
         }
         if (m_bShowGeneralizationError)
         {
-            sInfoMsg = QString(MessagesForLog::g_szGeneralizationErrorTitle);
+            sInfoMsg = QString(g_szGeneralizationErrorTitle);
             cout << qPrintable(sInfoMsg);
         }
         cout << endl;
@@ -1437,14 +1437,14 @@ void CTrainerForMLP::start_training()
         cout.setf(ios_base::scientific, ios_base::floatfield);
 
         cout.fill(' ');
-        cout.width(strlen(MessagesForLog::g_szEpochTitle));
+        cout.width(strlen(g_szEpochTitle));
         cout << m_nEpochsCount;
 
         if (m_bShowTrainingError)
         {
             cout.fill(' ');
             cout.precision(5);
-            cout.width(strlen(MessagesForLog::g_szTrainingErrorTitle));
+            cout.width(strlen(g_szTrainingErrorTitle));
             cout << training_error;
         }
 
@@ -1452,7 +1452,7 @@ void CTrainerForMLP::start_training()
         {
             cout.fill(' ');
             cout.precision(5);
-            cout.width(strlen(MessagesForLog::g_szGeneralizationErrorTitle));
+            cout.width(strlen(g_szGeneralizationErrorTitle));
             cout << m_aGeneralizationErrors[0];
         }
 
@@ -1509,7 +1509,7 @@ void CTrainerForMLP::do_training_epoch(int nEpochsCount)
     if (m_bDoLogging)
     {
         cout.fill(' ');
-        cout.width(strlen(MessagesForLog::g_szEpochTitle));
+        cout.width(strlen(g_szEpochTitle));
         cout << m_nEpochsCount;
 
         if (m_bShowTrainingError)
@@ -1518,7 +1518,7 @@ void CTrainerForMLP::do_training_epoch(int nEpochsCount)
                     m_aTrainInputs, m_aTrainTargets, m_nTrainSamples);
             cout.fill(' ');
             cout.precision(5);
-            cout.width(strlen(MessagesForLog::g_szTrainingErrorTitle));
+            cout.width(strlen(g_szTrainingErrorTitle));
             cout << training_error;
         }
 
@@ -1526,7 +1526,7 @@ void CTrainerForMLP::do_training_epoch(int nEpochsCount)
         {
             cout.fill(' ');
             cout.precision(5);
-            cout.width(strlen(MessagesForLog::g_szGeneralizationErrorTitle));
+            cout.width(strlen(g_szGeneralizationErrorTitle));
             cout << m_aGeneralizationErrors[m_nEpochsCount];
         }
 
@@ -1617,30 +1617,28 @@ void CTrainerForMLP::end_training(TTrainingState state)
         switch (state)
         {
         case tsGRADIENT:
-            sInfoMsg = QString(MessagesForLog::g_szStoppingByGradient);
+            sInfoMsg = QString(g_szStoppingByGradient);
             break;
         case tsMAXEPOCHS:
-            sInfoMsg = QString(MessagesForLog::g_szStoppingByMaxEpochs);
+            sInfoMsg = QString(g_szStoppingByMaxEpochs);
             break;
         case tsMINIMUM:
-            sInfoMsg = QString(MessagesForLog::g_szStoppingByMinError);
+            sInfoMsg = QString(g_szStoppingByMinError);
             break;
         default:
             if (m_bStoppedByCriterion)
             {
-                sInfoMsg = QString(MessagesForLog::g_szEarlyStopping);
+                sInfoMsg = QString(g_szEarlyStopping);
             }
             else if (m_bStoppedByGoal)
             {
                 if (m_bShowGeneralizationError)
                 {
-                    sInfoMsg = QString(MessagesForLog::\
-                                       g_szStoppingByGeneralizationError);
+                    sInfoMsg = QString(g_szStoppingByGeneralizationError);
                 }
                 else
                 {
-                    sInfoMsg = QString(MessagesForLog::\
-                                       g_szStoppingByTrainingError);
+                    sInfoMsg = QString(g_szStoppingByTrainingError);
                 }
             }
         }
@@ -1650,13 +1648,11 @@ void CTrainerForMLP::end_training(TTrainingState state)
 
         double mean_control_duration = m_ControlDuration / (m_nEpochsCount+1);
 
-        sInfoMsg = QString(MessagesForLog::g_szEpochDuration).arg(
+        sInfoMsg = QString(g_szEpochDuration).arg(
                     mean_training_duration + mean_control_duration);
         cout << qPrintable(sInfoMsg) << endl;
-        /*sInfoMsg = QString(MessagesForLog::g_szEpochDurationDetails).arg(
-                    mean_training_duration).arg(mean_control_duration);*/
-        sInfoMsg = QString(MessagesForLog::g_szEpochDurationDetails).arg(
-                            mean_training_duration, mean_control_duration);
+        sInfoMsg = QString(g_szEpochDurationDetails).arg(
+                    mean_training_duration, mean_control_duration);
         cout << qPrintable(sInfoMsg) << endl;
     }
 }

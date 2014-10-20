@@ -48,10 +48,21 @@ inline int get_random_value(int min_value, int max_value)
     float temp = (generate_random_value() * (max_value - min_value)
                   + min_value);
     return round_bond005(temp);
-};
+}
 
 /* Вычислить среднеабсолютную ошибку регрессии */
 float regression_error(float output, float target);
+
+/* Сравнить по содержимому два сигнала обучающего множества aSignal1[] и
+aSignal2[] (неважно, входные это сигналы или желаемые выходные) одинакового
+размера nSignalSize. Вернуть true, если все компоненты входных сигналов
+одинаковы, и false, если обнаружены различия */
+bool same_train_signals(const float aSignal1[], const float aSignal2[],
+                        int nSignalSize);
+
+/* Найти номер максимального компонента в сигнале aSignal[] размером
+nSignalSize. */
+int find_maximum_component(const float aSignal[], int nSignalSize);
 
 /* Загрузить из файла sFileName обучающее множество - набор входных сигналов
 aTrainInputs[] и соответствующих им желаемых выходных сигналов aTrainTargets[],
@@ -95,7 +106,7 @@ class EANNError: public std::exception
 protected:
     QString m_sErrorMessage;
 public:
-    ~EANNError() throw() {};
+    ~EANNError() throw() {}
     const char* what() const throw();
 };
 
