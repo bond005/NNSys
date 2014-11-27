@@ -139,6 +139,12 @@ int main(int argc, char *argv[])
                     nResult = EXIT_FAILURE;
                 }
                 break;
+            case REMOVE_REPEATING_SAMPLES:
+                if (!deleteRepeatingTrainSamples(cmd_params))
+                {
+                    nResult = EXIT_FAILURE;
+                }
+                break;
             }
         }
         else

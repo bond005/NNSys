@@ -1625,6 +1625,61 @@ bool check_params_for_processDivergentTrainSamples(const TCmdParams&rCmdParams)
     return result;
 }
 
+bool check_params_for_deleteRepeatingTrainSamples(const TCmdParams&rCmdParams)
+{
+    bool result;
+    int nNumberOfCmdParams = rCmdParams.size();
+    if (nNumberOfCmdParams != 2)
+    {
+        if (nNumberOfCmdParams < 2)
+        {
+            cerr << qPrintable(QString(g_szFewArgs));
+        }
+        else
+        {
+            cerr << qPrintable(QString(g_szManyArgs));
+        }
+        result = false;
+    }
+    else
+    {
+        if (rCmdParams.contains("repeat"))
+        {
+            if (rCmdParams["repeat"].isEmpty())
+            {
+                if (rCmdParams.contains("trainset"))
+                {
+                    if (rCmdParams["trainset"].isEmpty())
+                    {
+                        cerr << qPrintable(QString(g_szNullVal).arg("trainset"));
+                        result = false;
+                    }
+                    else
+                    {
+                        result = true;
+                    }
+                }
+                else
+                {
+                    cerr << qPrintable(QString(g_szArgIsNotFound).arg("trainset"));
+                    result = false;
+                }
+            }
+            else
+            {
+                result = false;
+                cerr<<qPrintable(QString(g_szImpossibleVal).arg("repeat"));
+            }
+        }
+        else
+        {
+            cerr << qPrintable(QString(g_szArgIsNotFound).arg("repeat"));
+            result = false;
+        }
+    }
+    return result;
+}
+
 /* В обучающем множестве найти группы противоречивых примеров, у которых
 входные сигналы одинаковы, а желаемые выходные - разные.
    Обучающее множество задано последовательностью входных сигналов aTrainInputs
@@ -1691,6 +1746,92 @@ void find_divergent_samples_in_train_set(
         if ((*it1).size() <= 1)
         {
             it1 = aGroupsOfDivergentSamples.erase(it1);
+        }
+        else
+        {
+            it1++;
+        }
+    }
+}
+
+/* В обучающем множестве найти группы повторяющихся примеров, у которых
+одинаковы и входные, и желаемые выходные сигналы.
+   Обучающее множество задано последовательностью входных сигналов aTrainInputs
+и последовательностью желаемых выходных сигналов aTrainTargets. Количество
+входных сигналов соответствует количеству желаемых выходных сигналов и
+составляет nSamplesNumber. Размер входного сигнала равен nInputSize, а размер
+желаемого выходного сигнала - nOutputSize.
+   Желаемые выходные сигналы в обучающем множестве могут и отсутствовать
+(aTrainTargets является нулевым указателем, а размер одного желаемого выходного
+сигнала nOutputSize равен нулю). В этом случае примеры сравниваются только по
+своим входным сигналам.
+   В результате своей работы функция формирует двухуровневый список
+aGroupsOfRepeatingSamples, на первом уровне которого - группы повторяющихся
+примеров, а на втором уровне - индексы повторяющихся примеров в обучающем
+множестве для каждой из групп. */
+void find_repeating_samples_in_train_set(
+        const float aTrainInputs[], const float aTrainTargets[],
+        int nSamplesNumber, int nInputSize, int nOutputSize,
+        QList<QList<int> >& aGroupsOfRepeatingSamples)
+{
+    int i, ind1, ind2;
+    QList<QList<int> >::iterator it1, it2;
+    QList<int> aNewGroup;
+
+    aGroupsOfRepeatingSamples.clear();
+    for (i = 0; i < nSamplesNumber; i++)
+    {
+        aNewGroup.clear();
+        aNewGroup.append(i);
+        aGroupsOfRepeatingSamples.append(aNewGroup);
+    }
+
+    it1 = aGroupsOfRepeatingSamples.begin();
+    while (it1 != aGroupsOfRepeatingSamples.end())
+    {
+        ind1 = (*it1).first();
+        it2 = it1 + 1;
+        while (it2 != aGroupsOfRepeatingSamples.end())
+        {
+            ind2 = (*it2).first();
+            if (same_train_signals(&aTrainInputs[ind1 * nInputSize],
+                                   &aTrainInputs[ind2 * nInputSize],
+                                   nInputSize))
+            {
+                if (nOutputSize == 0)
+                {
+                    (*it1).append(ind2);
+                    it2 = aGroupsOfRepeatingSamples.erase(it2);
+                }
+                else
+                {
+                    if (same_train_signals(&aTrainTargets[ind1 * nOutputSize],
+                                           &aTrainTargets[ind2 * nOutputSize],
+                                           nOutputSize))
+                    {
+                        (*it1).append(ind2);
+                        it2 = aGroupsOfRepeatingSamples.erase(it2);
+                    }
+                    else
+                    {
+                        it2++;
+                    }
+                }
+            }
+            else
+            {
+                it2++;
+            }
+        }
+        it1++;
+    }
+
+    it1 = aGroupsOfRepeatingSamples.begin();
+    while (it1 != aGroupsOfRepeatingSamples.end())
+    {
+        if ((*it1).size() <= 1)
+        {
+            it1 = aGroupsOfRepeatingSamples.erase(it1);
         }
         else
         {
@@ -1809,6 +1950,64 @@ int remove_divergent_samples(
         for (it2 = (*it1).begin(); it2 != (*it1).end(); it2++)
         {
             aRemovedSamples[*it2] = true;
+        }
+    }
+
+    for (i = 0; i < nSamplesNumber; i++)
+    {
+        if (aRemovedSamples[i])
+        {
+            if (j < (res-1))
+            {
+                memmove(&aTrainInputs[j*nInputSize],
+                        &aTrainInputs[(j+1)*nInputSize],
+                        (res-j-1)*nInputSize*sizeof(float));
+                memmove(&aTrainTargets[j*nOutputSize],
+                        &aTrainTargets[(j+1)*nOutputSize],
+                        (res-j-1)*nOutputSize*sizeof(float));
+            }
+            res--;
+        }
+        else
+        {
+            j++;
+        }
+    }
+    return res;
+}
+
+/* Удалить из обучающего множества все группы повторяющихся примеров, оставив
+только по одному примеру из каждой группы, и вернуть новое количество примеров
+в этом обучающем множестве.
+   Обучающее множество задано последовательностью входных сигналов aTrainInputs
+и последовательностью желаемых выходных сигналов aTrainTargets. Количество
+входных сигналов соответствует количеству желаемых выходных сигналов и
+составляет nSamplesNumber. Размер входного сигнала равен nInputSize, а размер
+желаемого выходного сигнала - nOutputSize.
+   Группы повторяющихся примеров заданы двухуровневым списком
+aGroupsOfRepeatingSamples, на первом уровне которого - группы повторяющихся
+примеров, а на втором уровне - индексы повторяющихся примеров в обучающем
+множестве для каждой из групп. */
+int remove_repeating_samples(
+        float aTrainInputs[], float aTrainTargets[],
+        int nSamplesNumber, int nInputSize, int nOutputSize,
+        const QList<QList<int> >& aGroupsOfRepeatingSamples)
+{
+    QVector<bool> aRemovedSamples(nSamplesNumber);
+    QList<QList<int> >::const_iterator it1;
+    QList<int>::const_iterator it2;
+    int i, j = 0, res = nSamplesNumber;
+
+    aRemovedSamples.fill(false);
+    for (it1 = aGroupsOfRepeatingSamples.begin();
+         it1 != aGroupsOfRepeatingSamples.end();
+         it1++)
+    {
+        it2 = (*it1).begin(); it2++;
+        while (it2 != (*it1).end())
+        {
+            aRemovedSamples[*it2] = true;
+            it2++;
         }
     }
 
@@ -2118,7 +2317,14 @@ TExecutionMode detect_mode(const TCmdParams& rCmdParams)
                     }
                     else
                     {
-                        result = SHOW_TRAINSET;
+                        if (rCmdParams.contains("repeat"))
+                        {
+                            result = REMOVE_REPEATING_SAMPLES;
+                        }
+                        else
+                        {
+                            result = SHOW_TRAINSET;
+                        }
                     }
                 }
             }
@@ -3492,6 +3698,107 @@ bool processDivergentTrainSamples(const TCmdParams& rCmdParams)
                                              sTrainSet));
                         result = false;
                     }
+                }
+            }
+        }
+        if (aInputs != 0)
+        {
+            delete[] aInputs;
+            aInputs = 0;
+        }
+        if (aOutputs != 0)
+        {
+            delete[] aOutputs;
+            aOutputs = 0;
+        }
+    }
+    catch(...)
+    {
+        if (aInputs != 0)
+        {
+            delete[] aInputs;
+            aInputs = 0;
+        }
+        if (aOutputs != 0)
+        {
+            delete[] aOutputs;
+            aOutputs = 0;
+        }
+        throw;
+    }
+
+    return result;
+}
+
+/* Удалить все повторяющиейся примеры обучающего множества, т.е. такие, у
+которых одинаковы входные и желаемые выходные сигналы. В каждой группе
+повторяющихся примеров обучающего множества после удаления остаётся только один
+пример.
+   ВХОДНЫЕ АРГУМЕНТЫ
+   rCmpParams - список параметров командной строки в виде пары "ключ-значение".
+Для данной функции (разделения исходного обучающего множества на собственно
+обучающее и контрольное подмножества) в списке должно быть два ключа:
+"trainset" и "divergent":
+   1. "trainset" - ключ, значением которого является строка с названием файла,
+содержащего анализируемое обучающее множество.
+   2. "repeat" - ключ без значения указывающий необходимость удаления
+повторяющихся примеров обучающего множества.
+   ВОЗВРАЩАЕМЫЙ РЕЗУЛЬТАТ
+   Если функция успешно завершила свою работу, то возвращается true. В случае
+ошибки возвращается false и на экран выводится сообщение о соответствующей
+ошибке. */
+bool deleteRepeatingTrainSamples(const TCmdParams& rCmdParams)
+{
+    if (!check_params_for_deleteRepeatingTrainSamples(rCmdParams))
+    {
+        return false;
+    }
+
+    QString sTrainSet = rCmdParams["trainset"];
+    int nSamples = 0, nInputs = 0, nOutputs = 0;
+    float *aInputs = 0, *aOutputs = 0;
+    bool result = true;
+
+    try
+    {
+        if (!load_trainset(sTrainSet, 0, 0, nSamples, nInputs, nOutputs))
+        {
+            cerr << qPrintable(QString(g_szTrainsetReadingError).arg(
+                                   sTrainSet));
+            result = false;
+        }
+        if (result)
+        {
+            aInputs = new float[nSamples * nInputs];
+            if (nOutputs > 0)
+            {
+                aOutputs = new float[nSamples * nOutputs];
+            }
+            if (!load_trainset(sTrainSet, aInputs, aOutputs, nSamples, nInputs,
+                               nOutputs))
+            {
+                cerr << qPrintable(QString(g_szTrainsetReadingError).arg(
+                                       sTrainSet));
+                result = false;
+            }
+        }
+        if (result)
+        {
+            QList<QList<int> > aGroupsOfRepeatingSamples;
+            find_repeating_samples_in_train_set(
+                        aInputs, aOutputs, nSamples, nInputs, nOutputs,
+                        aGroupsOfRepeatingSamples);
+            if (!aGroupsOfRepeatingSamples.isEmpty())
+            {
+                nSamples = remove_repeating_samples(
+                            aInputs, aOutputs, nSamples, nInputs, nOutputs,
+                            aGroupsOfRepeatingSamples);
+                if (!save_trainset(sTrainSet, aInputs, aOutputs,
+                                   nSamples, nInputs, nOutputs))
+                {
+                    cerr << qPrintable(QString(g_szTrainsetWritingError).arg(
+                                           sTrainSet));
+                    result = false;
                 }
             }
         }
