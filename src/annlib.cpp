@@ -20,7 +20,6 @@
 #include <cfloat>
 #include <ctime>
 #include <omp.h>
-// #include <iostream> // for debug
 
 #include <QFile>
 #include <QDataStream>
@@ -38,11 +37,11 @@
 
 using namespace std;
 
-static const float GOLD = 1.618034;
-static const float CGOLD = 0.3819660;
+static const double GOLD = 1.618034;
+static const double CGOLD = 0.3819660;
 
 static const int N_EXP = 20;
-static const float X_EXP[] = {
+static const double X_EXP[] = {
     -15.000000000000000,
      -8.497847557067871,
      -6.363110065460205,
@@ -65,7 +64,7 @@ static const float X_EXP[] = {
       0.830329835414886,
       1.000000000000000
 };
-static const float A_EXP[] = {
+static const double A_EXP[] = {
     0.000031312843930,
     0.000712073408067,
     0.003474863944575,
@@ -87,7 +86,7 @@ static const float A_EXP[] = {
     2.098088264465332,
     2.500183105468750
 };
-static const float B_EXP[] = {
+static const double B_EXP[] = {
     0.000469998572953,
     0.006254998035729,
     0.023834938183427,
@@ -109,7 +108,7 @@ static const float B_EXP[] = {
     0.551970005035400,
     0.218098640441895
 };
-static const float Y_EXP_0 = A_EXP[0] * X_EXP[0] + B_EXP[0];
+static const double Y_EXP_0 = A_EXP[0] * X_EXP[0] + B_EXP[0];
 
 #define SHFT(a, b, c, d) (a) = (b); (b) = (c); (c) = (d);
 #define SIGN(a,b) ((b) >= 0.0 ? fabs(a) : -fabs(a))
@@ -117,9 +116,9 @@ static const float Y_EXP_0 = A_EXP[0] * X_EXP[0] + B_EXP[0];
 /*****************************************************************************/
 /* Вычислить активационную функцию y(x) = 2x / (1 + abs(x)). */
 /*****************************************************************************/
-inline float activation(float x, TActivationKind kind)
+inline double activation(double x, TActivationKind kind)
 {
-    return ((kind == SIG) ? (2.0 * x / (1 + fabs(x))):x);
+    return ((kind == SIG) ? (2.0 * x / (1 + fabs(x))) : x);
 }
 
 /*****************************************************************************/
@@ -129,18 +128,18 @@ inline float activation(float x, TActivationKind kind)
     dx     (1 + abs(x))^2
 */
 /*****************************************************************************/
-inline float activation_derivative(float x, TActivationKind kind)
+inline double activation_derivative(double x, TActivationKind kind)
 {
-    float temp = 1.0 + fabs(x);
-    return ((kind == SIG) ? (2.0 / (temp * temp)):1.0);
+    double temp = 1.0 + fabs(x);
+    return ((kind == SIG) ? (2.0 / (temp * temp)) : 1.0);
 }
 
 /*****************************************************************************/
 /* Вычисление функции sign(x) */
 /*****************************************************************************/
-inline float sign(float x)
+inline double sign(double x)
 {
-    if (x != 0.0)
+    if ((x > DBL_EPSILON) || (x < -DBL_EPSILON))
     {
         if (x > 0.0)
         {
@@ -151,6 +150,10 @@ inline float sign(float x)
             x = -1.0;
         }
     }
+    else
+    {
+        x = 0.0;
+    }
     return x;
 }
 
@@ -159,7 +162,7 @@ inline float sign(float x)
 параметров A и B в уравнениях прямых для всех 10 отрезков, на которые разбита
 область определения функции. X-координаты границ этих отрезков заданы массивом
 X[0:10]. */
-inline float calc_exp(float x)
+inline double calc_exp(double x)
 {
     register int i;
     if (x <= X_EXP[10]) // first = 0, last = 20, mid = 10
@@ -387,16 +390,16 @@ void CMultilayerPerceptron::copy_from(const CMultilayerPerceptron &src)
         }
     }
 
-    m_aWeights = new float[m_aIndexesForIDBD[m_nLayersCount-1]
-                            + m_aLayerSizes[m_nLayersCount-1]
-                            * (m_aInputsCount[m_nLayersCount-1] + 1)];
-    nDataSize = sizeof(float) * (m_aIndexesForIDBD[m_nLayersCount-1]
-                + m_aLayerSizes[m_nLayersCount-1]
-                * (m_aInputsCount[m_nLayersCount-1] + 1));
+    m_aWeights = new double[m_aIndexesForIDBD[m_nLayersCount-1]
+            + m_aLayerSizes[m_nLayersCount-1]
+            * (m_aInputsCount[m_nLayersCount-1] + 1)];
+    nDataSize = sizeof(double) * (m_aIndexesForIDBD[m_nLayersCount-1]
+            + m_aLayerSizes[m_nLayersCount-1]
+            * (m_aInputsCount[m_nLayersCount-1] + 1));
     memcpy(&m_aWeights[0], &(src.m_aWeights[0]), nDataSize);
 
-    m_aTempOutputs = new float[nMaxLayerSize];
-    m_aTempInputs = new float[nMaxLayerSize];
+    m_aTempOutputs = new double[nMaxLayerSize];
+    m_aTempInputs = new double[nMaxLayerSize];
 }
 
 /*****************************************************************************/
@@ -407,8 +410,8 @@ nInputs, количества слоёв nLayers и количества ней�
    Данная операция является private-операций, используемой в конструкторе
 и операции resize для проверки, правильно ли заданы размеры нейросети. */
 /*****************************************************************************/
-void CMultilayerPerceptron::check_size(int nInputs, int nLayers,
-                                       int aLayerSizes[])
+void CMultilayerPerceptron::check_size(int nInputs, const int nLayers,
+                                       const int aLayerSizes[])
 {
     if ((nInputs <= 0) || (nLayers <= 0))
     {
@@ -449,11 +452,11 @@ CMultilayerPerceptron::CMultilayerPerceptron()
     m_aInputsCount[0] = m_nInputsCount;
     m_aIndexesForIDBD[0] = 0;
 
-    m_aWeights = new float[m_aIndexesForIDBD[0] + m_aLayerSizes[0]
-                           * (m_aInputsCount[0] + 1)];
+    m_aWeights = new double[m_aIndexesForIDBD[0] + m_aLayerSizes[0]
+            * (m_aInputsCount[0] + 1)];
 
-    m_aTempOutputs = new float[1];
-    m_aTempInputs = new float[1];
+    m_aTempOutputs = new double[1];
+    m_aTempInputs = new double[1];
 
     initialize_weights();
 }
@@ -462,9 +465,9 @@ CMultilayerPerceptron::CMultilayerPerceptron()
 /* Конструктор класса CMultilayerPerceptron (создаётся нейросеть заданной
 структуры). */
 /*****************************************************************************/
-CMultilayerPerceptron::CMultilayerPerceptron(int nInputs, int nLayers,
-                                             int aLayerSizes[],
-                                             TActivationKind aActivations[])
+CMultilayerPerceptron::CMultilayerPerceptron(
+        int nInputs, int nLayers, const int aLayerSizes[],
+        const TActivationKind aActivations[])
 {
     check_size(nInputs, nLayers, aLayerSizes);
 
@@ -493,12 +496,12 @@ CMultilayerPerceptron::CMultilayerPerceptron(int nInputs, int nLayers,
         }
     }
 
-    m_aWeights = new float[m_aIndexesForIDBD[m_nLayersCount-1]
-                           + m_aLayerSizes[m_nLayersCount-1]
-                           * (m_aInputsCount[m_nLayersCount-1] + 1)];
+    m_aWeights = new double[m_aIndexesForIDBD[m_nLayersCount-1]
+            + m_aLayerSizes[m_nLayersCount-1]
+            * (m_aInputsCount[m_nLayersCount-1] + 1)];
 
-    m_aTempOutputs = new float[nMaxLayerSize];
-    m_aTempInputs = new float[nMaxLayerSize];
+    m_aTempOutputs = new double[nMaxLayerSize];
+    m_aTempInputs = new double[nMaxLayerSize];
 
     initialize_weights();
 }
@@ -536,16 +539,16 @@ CMultilayerPerceptron::CMultilayerPerceptron(const CMultilayerPerceptron &src)
         }
     }
 
-    m_aWeights = new float[m_aIndexesForIDBD[m_nLayersCount-1]
-                            + m_aLayerSizes[m_nLayersCount-1]
-                            * (m_aInputsCount[m_nLayersCount-1] + 1)];
-    nDataSize = sizeof(float) * (m_aIndexesForIDBD[m_nLayersCount-1]
-                + m_aLayerSizes[m_nLayersCount-1]
-                * (m_aInputsCount[m_nLayersCount-1] + 1));
+    m_aWeights = new double[m_aIndexesForIDBD[m_nLayersCount-1]
+            + m_aLayerSizes[m_nLayersCount-1]
+            * (m_aInputsCount[m_nLayersCount-1] + 1)];
+    nDataSize = sizeof(double) * (m_aIndexesForIDBD[m_nLayersCount-1]
+            + m_aLayerSizes[m_nLayersCount-1]
+            * (m_aInputsCount[m_nLayersCount-1] + 1));
     memcpy(&m_aWeights[0], &(src.m_aWeights[0]), nDataSize);
 
-    m_aTempOutputs = new float[nMaxLayerSize];
-    m_aTempInputs = new float[nMaxLayerSize];
+    m_aTempOutputs = new double[nMaxLayerSize];
+    m_aTempInputs = new double[nMaxLayerSize];
 }
 
 /*****************************************************************************/
@@ -611,18 +614,18 @@ CMultilayerPerceptron::~CMultilayerPerceptron()
    Длина последовательности входных сигналов и соответствующей
 последовательности вычисляемых выходных сигналов равна nSamples. */
 /*****************************************************************************/
-void CMultilayerPerceptron::calculate_outputs(float inputs[], float outputs[],
-                                              int nSamples)
+void CMultilayerPerceptron::calculate_outputs(
+        const double inputs[], double outputs[], int nSamples)
 {
     if (nSamples <= 0)
     {
         throw ETrainSetError();
     }
     int iSample, iInputSampleStart, iOutputSampleStart, i, j, k;
-    float sum_value;
+    double sum_value;
     if (m_nLayersCount > 1) // если есть хотя бы один скрытый слой
     {
-        float *pTemp;
+        double *pTemp;
         /* Для каждого из nSamples входных сигналов вычисляем выходной сигнал
         нейросети и записываем в соответствующее место в outputs[] */
         for (iSample = 0; iSample < nSamples; iSample++)
@@ -707,6 +710,11 @@ void CMultilayerPerceptron::calculate_outputs(float inputs[], float outputs[],
                 outputs[j+iOutputSampleStart] = activation(sum_value,
                                                            m_aActivations[i]);
             }
+            if ((m_aActivations[i] == SOFT) && (m_aLayerSizes[i] > 1))
+            {
+                do_softmax_normalization(&outputs[iOutputSampleStart],
+                                         m_aLayerSizes[i]);
+            }
         }
     }
     else  // если скрытых слоев нет, а есть только один - выходной
@@ -733,6 +741,11 @@ void CMultilayerPerceptron::calculate_outputs(float inputs[], float outputs[],
                 outputs[j+iOutputSampleStart] = activation(sum_value,
                                                            m_aActivations[0]);
             }
+            if ((m_aActivations[0] == SOFT) && (m_aLayerSizes[0] > 1))
+            {
+                do_softmax_normalization(&outputs[iOutputSampleStart],
+                                         m_aLayerSizes[0]);
+            }
         }
     }
 }
@@ -746,18 +759,18 @@ void CMultilayerPerceptron::calculate_outputs(float inputs[], float outputs[],
 последовательности желаемых выходных сигналов равна nSamples.
    Возвращаемое значение - вычисленное среднеквадратичное отклонение. */
 /*****************************************************************************/
-float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
-                                           int nSamples)
+double CMultilayerPerceptron::calculate_mse(
+        const double inputs[], const double targets[], int nSamples)
 {
     if (nSamples <= 0)
     {
         throw ETrainSetError();
     }
     int iSample, iInputSampleStart, iOutputSampleStart, i, j, k;
-    float result = 0.0, instant_mse, sum_value;
+    double result = 0.0, instant_mse, sum_value;
     if (m_nLayersCount > 1) // если есть хотя бы один скрытый слой
     {
-        float *pTemp;
+        double *pTemp;
         /* Для каждого из nSamples входных сигналов вычисляем выходной сигнал
         нейросети и вычисляем сумму квадратов отклонений его от желаемого
         выходного сигнала из соответствующего мества outputs[] */
@@ -843,11 +856,27 @@ float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
                 sum_value += getWeight(i,j,m_aInputsCount[i]);
                 // пропускаем через функцию активации
                 m_aTempOutputs[j] = activation(sum_value, m_aActivations[i]);
-
-                // считаем разность между реальным и желаемым выходами
-                sum_value = m_aTempOutputs[j] - targets[j+iOutputSampleStart];
-                // возводим в квадрат и накапливаем
-                instant_mse += (sum_value * sum_value);
+            }
+            if ((m_aActivations[i] == SOFT) && (m_aLayerSizes[i] > 1))
+            {
+                do_softmax_normalization(&m_aTempOutputs[0],
+                                         m_aLayerSizes[i]);
+                for (j = 0; j < m_aLayerSizes[i]; j++)
+                {
+                    instant_mse -= (targets[j+iOutputSampleStart]
+                            * log((m_aTempOutputs[j] > DBL_EPSILON)
+                                  ? m_aTempOutputs[j] : DBL_EPSILON));
+                }
+            }
+            else
+            {
+                for (j = 0; j < m_aLayerSizes[i]; j++)
+                {
+                    // считаем разность между реальным и желаемым выходами
+                    sum_value = m_aTempOutputs[j] - targets[j+iOutputSampleStart];
+                    // возводим в квадрат и накапливаем
+                    instant_mse += (sum_value * sum_value);
+                }
             }
             instant_mse /= m_aLayerSizes[i];
 
@@ -869,8 +898,7 @@ float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
             же вычисляем сумму квадратов разностей между полученным и
             соответствующим ему желаемым выходными сигналами. */
             instant_mse = 0.0;
-            #pragma omp parallel for private(k,sum_value)\
-                reduction(+:instant_mse)
+            #pragma omp parallel for private(k,sum_value)
             for (j = 0; j < m_aLayerSizes[0]; j++)
             {
                 sum_value = 0.0;
@@ -883,11 +911,27 @@ float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
                 sum_value += getWeight(0,j,m_nInputsCount);
                 // пропускаем через функцию активации
                 m_aTempOutputs[j] = activation(sum_value, m_aActivations[0]);
-
-                // считаем разность между реальным и желаемым выходами
-                sum_value = m_aTempOutputs[j] - targets[j+iOutputSampleStart];
-                // возводим в квадрат и накапливаем
-                instant_mse += (sum_value * sum_value);
+            }
+            if ((m_aActivations[0] == SOFT) && (m_aLayerSizes[0] > 1))
+            {
+                do_softmax_normalization(&m_aTempOutputs[0],
+                                         m_aLayerSizes[0]);
+                for (j = 0; j < m_aLayerSizes[0]; j++)
+                {
+                    instant_mse -= (targets[j+iOutputSampleStart]
+                            * log((m_aTempOutputs[j] > DBL_EPSILON)
+                                  ? m_aTempOutputs[j] : DBL_EPSILON));
+                }
+            }
+            else
+            {
+                for (j = 0; j < m_aLayerSizes[0]; j++)
+                {
+                    // считаем разность между реальным и желаемым выходами
+                    sum_value = m_aTempOutputs[j] - targets[j+iOutputSampleStart];
+                    // возводим в квадрат и накапливаем
+                    instant_mse += (sum_value * sum_value);
+                }
             }
             instant_mse /= m_aLayerSizes[0];
 
@@ -913,19 +957,20 @@ float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
 задано массивом distribution[] (длина массива равна nSamples - по числу
 примеров в тестовом множестве).
    Возвращаемое значение - вычисленное среднеквадратичное отклонение. */
-float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
-                                           float distribution[],int nSamples)
+double CMultilayerPerceptron::calculate_mse(
+        const double inputs[], const double targets[],
+        const double distribution[], int nSamples)
 {
     if (nSamples <= 0)
     {
         throw ETrainSetError();
     }
     int iSample, iInputSampleStart, iOutputSampleStart, i, j, k;
-    float result = 0.0, sum_distribution = 0.0;
-    float sample_err, sum_value;
+    double result = 0.0, sum_distribution = 0.0;
+    double sample_err, sum_value;
     if (m_nLayersCount > 1) // если есть хотя бы один скрытый слой
     {
-        float *pTemp;
+        double *pTemp;
         /* Для каждого из nSamples входных сигналов вычисляем выходной сигнал
         нейросети и вычисляем сумму квадратов отклонений его от желаемого
         выходного сигнала из соответствующего мества outputs[] */
@@ -997,8 +1042,7 @@ float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
             /* Вычисляем выходы нейронов выходного слоя и сразу же считаем
             квадратичное отклонение между полученными и желаемыми выходами. */
             sample_err = 0.0;
-            #pragma omp parallel for private(k,sum_value)\
-                reduction(+:sample_err)
+            #pragma omp parallel for private(k,sum_value)
             for (j = 0; j < m_aLayerSizes[i]; j++)
             {
                 sum_value = 0.0;
@@ -1011,11 +1055,27 @@ float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
                 sum_value += getWeight(i,j,m_aInputsCount[i]);
                 // пропускаем через функцию активации
                 m_aTempOutputs[j] = activation(sum_value, m_aActivations[i]);
-
-                // считаем разность между реальным и желаемым выходами
-                sum_value = m_aTempOutputs[j] - targets[j+iOutputSampleStart];
-                // возводим в квадрат и накапливаем
-                sample_err += (sum_value * sum_value);
+            }
+            if ((m_aActivations[i] == SOFT) && (m_aLayerSizes[i] > 1))
+            {
+                do_softmax_normalization(&m_aTempOutputs[0],
+                                         m_aLayerSizes[i]);
+                for (j = 0; j < m_aLayerSizes[i]; j++)
+                {
+                    sample_err -= (targets[j+iOutputSampleStart]
+                            * log((m_aTempOutputs[j] > DBL_EPSILON)
+                                  ? m_aTempOutputs[j] : DBL_EPSILON));
+                }
+            }
+            else
+            {
+                for (j = 0; j < m_aLayerSizes[i]; j++)
+                {
+                    // считаем разность между реальным и желаемым выходами
+                    sum_value = m_aTempOutputs[j] - targets[j+iOutputSampleStart];
+                    // возводим в квадрат и накапливаем
+                    sample_err += (sum_value * sum_value);
+                }
             }
             sample_err /= m_aLayerSizes[m_nLayersCount-1];
             result += sample_err * distribution[iSample];
@@ -1037,8 +1097,7 @@ float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
             же вычисляем сумму квадратов разностей между полученным и
             соответствующим ему желаемым выходными сигналами. */
             sample_err = 0.0;
-            #pragma omp parallel for private(k,sum_value)\
-                reduction(+:sample_err)
+            #pragma omp parallel for private(k,sum_value)
             for (j = 0; j < m_aLayerSizes[0]; j++)
             {
                 sum_value = 0.0;
@@ -1051,11 +1110,27 @@ float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
                 sum_value += getWeight(0,j,m_nInputsCount);
                 // пропускаем через функцию активации
                 m_aTempOutputs[j] = activation(sum_value, m_aActivations[0]);
-
-                // считаем разность между реальным и желаемым выходами
-                sum_value = m_aTempOutputs[j] - targets[j+iOutputSampleStart];
-                // возводим в квадрат и накапливаем
-                sample_err += (sum_value * sum_value);
+            }
+            if ((m_aActivations[0] == SOFT) && (m_aLayerSizes[0] > 1))
+            {
+                do_softmax_normalization(&m_aTempOutputs[0],
+                                         m_aLayerSizes[0]);
+                for (j = 0; j < m_aLayerSizes[0]; j++)
+                {
+                    sample_err -= (targets[j+iOutputSampleStart]
+                            * log((m_aTempOutputs[j] > DBL_EPSILON)
+                                  ? m_aTempOutputs[j] : DBL_EPSILON));
+                }
+            }
+            else
+            {
+                for (j = 0; j < m_aLayerSizes[0]; j++)
+                {
+                    // считаем разность между реальным и желаемым выходами
+                    sum_value = m_aTempOutputs[j] - targets[j+iOutputSampleStart];
+                    // возводим в квадрат и накапливаем
+                    sample_err += (sum_value * sum_value);
+                }
             }
             sample_err /= m_aLayerSizes[m_nLayersCount-1];
             result += sample_err * distribution[iSample];
@@ -1077,15 +1152,16 @@ float CMultilayerPerceptron::calculate_mse(float inputs[], float targets[],
    Длина последовательности входных сигналов и соответствующей
 последовательности желаемых выходных сигналов равна nSamples.
    Возвращаемое значение - вычисленная ошибка в процентах (от 0 до 100). */
-float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
-                                             int nSamples, TSolvedTask task)
+double CMultilayerPerceptron::calculate_error(
+        const double inputs[], const double targets[], int nSamples,
+        TSolvedTask task)
 {
     if (nSamples <= 0)
     {
         throw ETrainSetError();
     }
     int iSample, iInputSampleStart, iOutputSampleStart, i, j, k;
-    float result = 0.0, instant_error, sum_value;
+    double result = 0.0, instant_error, sum_value;
     if (task == taskCLASSIFICATION) // считаем ошибку классификации
     {
         int iMaxOutput, iMaxTarget;
@@ -1093,7 +1169,7 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
         {
             if (m_nLayersCount > 1) // если есть хотя бы один скрытый слой
             {
-                float *pTemp;
+                double *pTemp;
                 /* Для каждого из nSamples входных сигналов вычисляем выходной
                 сигнал нейросети и вычисляем ошибку классификации на основе его
                 сравнения с желаемым выходным сигналом из соответствующего
@@ -1278,7 +1354,7 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
         {
             if (m_nLayersCount > 1) // если есть хотя бы один скрытый слой
             {
-                float *pTemp;
+                double *pTemp;
                 /* Для каждого из nSamples входных сигналов вычисляем выходной
                 сигнал нейросети и вычисляем ошибку классификации путём
                 сравнения с желаемым выходным сигналом из соответствующего
@@ -1452,7 +1528,7 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
     {
         if (m_nLayersCount > 1) // если есть хотя бы один скрытый слой
         {
-            float *pTemp;
+            double *pTemp;
             /* Для каждого из nSamples входных сигналов вычисляем выходной
             сигнал нейросети и вычисляем ошибку регрессии на основе его
             отклонений от желаемого выходного сигнала из соответствующего места
@@ -1531,8 +1607,7 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
                 их среднего отклонения от компонентов желаемого выходного
                 сигнала из соответствующего места outputs[]. */
                 instant_error = 0.0;
-                #pragma omp parallel for private(k,sum_value)\
-                    reduction(+:instant_error)
+                #pragma omp parallel for private(k,sum_value)
                 for (j = 0; j < m_aLayerSizes[i]; j++)
                 {
                     sum_value = 0.0;
@@ -1546,8 +1621,15 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
                     // пропускаем через функцию активации
                     m_aTempOutputs[j] = activation(sum_value,
                                                    m_aActivations[i]);
-
-                    // накаплмваем ошибку регрессии
+                }
+                if ((m_aActivations[i] == SOFT) && (m_aLayerSizes[i] > 1))
+                {
+                    do_softmax_normalization(&m_aTempOutputs[0],
+                                             m_aLayerSizes[i]);
+                }
+                for (j = 0; j < m_aLayerSizes[i]; j++)
+                {
+                    // накапливаем ошибку регрессии
                     instant_error += regression_error(
                             m_aTempOutputs[j], targets[j+iOutputSampleStart]);
                 }
@@ -1572,8 +1654,7 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
                 полученным и соответствующим ему желаемым выходными сигналами.
                 */
                 instant_error = 0.0;
-                #pragma omp parallel for private(k,sum_value)\
-                    reduction(+:instant_error)
+                #pragma omp parallel for private(k,sum_value)
                 for (j = 0; j < m_aLayerSizes[0]; j++)
                 {
                     sum_value = 0.0;
@@ -1588,7 +1669,14 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
                     // пропускаем через функцию активации
                     m_aTempOutputs[j] = activation(sum_value,
                                                    m_aActivations[0]);
-
+                }
+                if ((m_aActivations[0] == SOFT) && (m_aLayerSizes[0] > 1))
+                {
+                    do_softmax_normalization(&m_aTempOutputs[0],
+                                             m_aLayerSizes[0]);
+                }
+                for (j = 0; j < m_aLayerSizes[0]; j++)
+                {
                     instant_error += regression_error(
                             m_aTempOutputs[j], targets[j+iOutputSampleStart]);
                 }
@@ -1612,16 +1700,16 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
 задано массивом distribution[] (длина массива равна nSamples - по числу
 примеров в тестовом множестве).
    Возвращаемое значение - вычисленная ошибка в процентах (от 0 до 100). */
-float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
-                                             float distribution[],
-                                             int nSamples, TSolvedTask task)
+double CMultilayerPerceptron::calculate_error(
+        const double inputs[], const double targets[],
+        const double distribution[], int nSamples, TSolvedTask task)
 {
     if (nSamples <= 0)
     {
         throw ETrainSetError();
     }
     int iSample, iInputSampleStart, iOutputSampleStart, i, j, k;
-    float result = 0.0, sum_distribution = 0.0, instant_error, sum_value;
+    double result = 0.0, sum_distribution = 0.0, instant_error, sum_value;
     if (task == taskCLASSIFICATION) // считаем ошибку классификации
     {
         int iMaxOutput, iMaxTarget;
@@ -1629,7 +1717,7 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
         {
             if (m_nLayersCount > 1) // если есть хотя бы один скрытый слой
             {
-                float *pTemp;
+                double *pTemp;
                 /* Для каждого из nSamples входных сигналов вычисляем выходной
                 сигнал нейросети и вычисляем ошибку классификации на основе его
                 сравнения с желаемым выходным сигналом из соответствующего
@@ -1819,7 +1907,7 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
         {
             if (m_nLayersCount > 1) // если есть хотя бы один скрытый слой
             {
-                float *pTemp;
+                double *pTemp;
                 /* Для каждого из nSamples входных сигналов вычисляем выходной
                 сигнал нейросети и вычисляем ошибку классификации путём
                 сравнения с желаемым выходным сигналом из соответствующего
@@ -1995,7 +2083,7 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
     {
         if (m_nLayersCount > 1) // если есть хотя бы один скрытый слой
         {
-            float *pTemp;
+            double *pTemp;
             /* Для каждого из nSamples входных сигналов вычисляем выходной
             сигнал нейросети и вычисляем ошибку регрессии на основе его
             отклонений от желаемого выходного сигнала из соответствующего места
@@ -2073,8 +2161,7 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
                 их среднего отклонения от компонентов желаемого выходного
                 сигнала из соответствующего места outputs[]. */
                 instant_error = 0.0;
-                #pragma omp parallel for private(k,sum_value)\
-                    reduction(+:instant_error)
+                #pragma omp parallel for private(k,sum_value)
                 for (j = 0; j < m_aLayerSizes[i]; j++)
                 {
                     sum_value = 0.0;
@@ -2088,7 +2175,13 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
                     // пропускаем через функцию активации
                     m_aTempOutputs[j] = activation(sum_value,
                                                    m_aActivations[i]);
-
+                }
+                if ((m_aActivations[i] == SOFT) && (m_aLayerSizes[i] > 1))
+                {
+                    do_softmax_normalization(&m_aTempOutputs[0], m_aLayerSizes[i]);
+                }
+                for (j = 0; j < m_aLayerSizes[i]; j++)
+                {
                     // накаплмваем ошибку регрессии
                     instant_error += regression_error(
                             m_aTempOutputs[j], targets[j+iOutputSampleStart]);
@@ -2115,8 +2208,7 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
                 полученным и соответствующим ему желаемым выходными сигналами.
                 */
                 instant_error = 0.0;
-                #pragma omp parallel for private(k,sum_value)\
-                    reduction(+:instant_error)
+                #pragma omp parallel for private(k,sum_value)
                 for (j = 0; j < m_aLayerSizes[0]; j++)
                 {
                     sum_value = 0.0;
@@ -2131,7 +2223,14 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
                     // пропускаем через функцию активации
                     m_aTempOutputs[j] = activation(sum_value,
                                                    m_aActivations[0]);
-
+                }
+                if ((m_aActivations[0] == SOFT) && (m_aLayerSizes[0] > 1))
+                {
+                    do_softmax_normalization(&m_aTempOutputs[0],
+                                             m_aLayerSizes[0]);
+                }
+                for (j = 0; j < m_aLayerSizes[0]; j++)
+                {
                     // накаплмваем ошибку регрессии
                     instant_error += regression_error(
                             m_aTempOutputs[j], targets[j+iOutputSampleStart]);
@@ -2165,12 +2264,14 @@ float CMultilayerPerceptron::calculate_error(float inputs[], float targets[],
 void CMultilayerPerceptron::initialize_weights()
 {
     int i, j, k;
-    float variance;
+    double variance, a, b;
 
     /* Цикл по всем слоям */
     for (i = 0; i < m_nLayersCount; i++)
     {
         variance = 1.0 / sqrt(m_aInputsCount[i] + 1.0);
+        a = -variance * sqrt(3.0);
+        b = variance * sqrt(3.0);
         // цикл по всем нейронам слоя
         for (j = 0; j < m_aLayerSizes[i]; j++)
         {
@@ -2180,7 +2281,7 @@ void CMultilayerPerceptron::initialize_weights()
                среднеквадратичное отклонение target_variance. */
             for (k = 0; k <= m_aInputsCount[i]; k++)
             {
-                setWeight(i,j,k, get_random_value(-variance, variance));
+                setWeight(i,j,k, generate_random_value(a, b));
             }
         }
     }
@@ -2205,7 +2306,7 @@ bool CMultilayerPerceptron::load(const QString& sFilename)
         try
         {
             QDataStream mlp_stream(&mlp_file);
-            mlp_stream.setFloatingPointPrecision(QDataStream::SinglePrecision);
+            mlp_stream.setFloatingPointPrecision(QDataStream::DoublePrecision);
 
             qint32 nInputsCount, nLayersCount, nTemp;
             int i;
@@ -2242,10 +2343,14 @@ bool CMultilayerPerceptron::load(const QString& sFilename)
                                 if (mlp_stream.status() == QDataStream::Ok)
                                 {
                                     /*Тип активационной функции может быть либо
-                                      0 (линейная), либо 1 (сигмоида) */
-                                    if ((nTemp >= 0) && (nTemp <= 1))
+                                      0 (линейная), либо 1 (сигмоида), либо же
+                                      2 (SOFTMAX) */
+                                    if ((nTemp >= 0) && (nTemp <= 2))
                                     {
-                                        aActivations[i] = ((nTemp==0)?LIN:SIG);
+                                        aActivations[i] =
+                                                ((nTemp == 0)
+                                                 ? LIN : (((nTemp == 1)
+                                                           ? SIG : SOFT)));
                                     }
                                     else
                                     {
@@ -2280,7 +2385,7 @@ bool CMultilayerPerceptron::load(const QString& sFilename)
                                                          aLayerSizes,
                                                          aActivations);
                         int i, n = loaded_mlp.getAllWeightsCount();
-                        qint64 nFileSize = n * sizeof(float) + sizeof(qint32)
+                        qint64 nFileSize = n * sizeof(double) + sizeof(qint32)
                                            * (2 + 2 * nLayersCount);
                         if (mlp_file.size() != nFileSize)
                         {
@@ -2365,7 +2470,7 @@ bool CMultilayerPerceptron::save(const QString& sFilename) const
         try
         {
             QDataStream mlp_stream(&mlp_file);
-            mlp_stream.setFloatingPointPrecision(QDataStream::SinglePrecision);
+            mlp_stream.setFloatingPointPrecision(QDataStream::DoublePrecision);
 
             qint32 nTemp;
             // Записываем количество входов и количество слоёв
@@ -2393,7 +2498,8 @@ bool CMultilayerPerceptron::save(const QString& sFilename) const
                     if (result)
                     {
                         // Записываем тип активационной функции нейронов слоя
-                        nTemp = ((m_aActivations[i] == LIN) ? 0:1);
+                        nTemp = ((m_aActivations[i] == LIN)
+                                 ? 0 : ((m_aActivations[i] == SIG) ? 1:2));
                         mlp_stream << nTemp;
                         if (mlp_stream.status() != QDataStream::Ok)
                         {
@@ -2436,8 +2542,9 @@ bool CMultilayerPerceptron::save(const QString& sFilename) const
 /* Изменение размеров нейросети (числа входов, числа слоёв, числа нейронов в
 каждом из слоёв). */
 /*****************************************************************************/
-void CMultilayerPerceptron::resize(int nInputs, int nLayers, int aLayerSizes[],
-                                   TActivationKind aActivations[])
+void CMultilayerPerceptron::resize(int nInputs, int nLayers,
+                                   const int aLayerSizes[],
+                                   const TActivationKind aActivations[])
 {
     check_size(nInputs, nLayers, aLayerSizes);
 
@@ -2474,11 +2581,11 @@ void CMultilayerPerceptron::resize(int nInputs, int nLayers, int aLayerSizes[],
         }
         if (new_mlp.getInputsCountOfLayer(i) > m_aInputsCount[i])
         {
-            nWeightsDataSize = m_aInputsCount[i] * sizeof(float);
+            nWeightsDataSize = m_aInputsCount[i] * sizeof(double);
         }
         else
         {
-            nWeightsDataSize = new_mlp.getInputsCountOfLayer(i)*sizeof(float);
+            nWeightsDataSize = new_mlp.getInputsCountOfLayer(i)*sizeof(double);
         }
         for (j = 0; j < nLayerSize; j++)
         {
@@ -2511,8 +2618,8 @@ void CTrainingOfMLP::getmem_for_net_outputs()
         m_aNetOutputsI[i] = nNeuronsCount;
         nNeuronsCount += m_pTrainedMLP->getLayerSize(i);
     }
-    m_aNetOutputs = new float[nNeuronsCount];
-    m_aNetOutputsD = new float[nNeuronsCount];
+    m_aNetOutputs = new double[nNeuronsCount];
+    m_aNetOutputsD = new double[nNeuronsCount];
 }
 
 void CTrainingOfMLP::clear_data()
@@ -2572,7 +2679,7 @@ void CTrainingOfMLP::setMaxEpochsCount(int nMaxEpochsCount)
 /* Запустить процесс обучения нейронной сети pTrainedMLP на обучающем
    множестве pTrainSet. */
 void CTrainingOfMLP::train(CMultilayerPerceptron *pTrainedMLP,
-                           float aTrainInputs[], float aTrainTargets[],
+                           double aTrainInputs[], double aTrainTargets[],
                            int nTrainSamples)
 {
     m_aIndexesOfTrainInputs = 0;
@@ -2592,7 +2699,7 @@ void CTrainingOfMLP::train(CMultilayerPerceptron *pTrainedMLP,
         m_aIndexesOfTrainInputs = new int[nTrainSamples];
         m_aIndexesOfTrainTargets = new int[nTrainSamples];
 
-        m_aWeightsOfTrainSamples = new float[nTrainSamples];
+        m_aWeightsOfTrainSamples = new double[nTrainSamples];
         getmem_for_net_outputs();
 
         for (int i = 0; i < nTrainSamples; i++)
@@ -2636,8 +2743,8 @@ void CTrainingOfMLP::train(CMultilayerPerceptron *pTrainedMLP,
    выходных сигналов aTrainSetTargets[]. Распределение вероятности примеров
    задано массивом sDistribution[]. */
 void CTrainingOfMLP::train(CMultilayerPerceptron *pTrainedMLP,
-                           float aTrainInputs[], float aTrainTargets[],
-                           float aDistribution[], int nTrainSamples)
+                           double aTrainInputs[], double aTrainTargets[],
+                           double aDistribution[], int nTrainSamples)
 {
     m_aIndexesOfTrainInputs = 0;
     m_aIndexesOfTrainTargets = 0;
@@ -2656,10 +2763,10 @@ void CTrainingOfMLP::train(CMultilayerPerceptron *pTrainedMLP,
         m_aIndexesOfTrainInputs = new int[nTrainSamples];
         m_aIndexesOfTrainTargets = new int[nTrainSamples];
 
-        m_aWeightsOfTrainSamples = new float[nTrainSamples];
+        m_aWeightsOfTrainSamples = new double[nTrainSamples];
         getmem_for_net_outputs();
 
-        float sumWeights = 0.0;
+        double sumWeights = 0.0;
         for (int i = 0; i < nTrainSamples; i++)
         {
             m_aWeightsOfTrainSamples[i] = aDistribution[i] * nTrainSamples;
@@ -2721,7 +2828,7 @@ void CTrainingOfMLP::calculate_outputs_and_derivatives(
     }
     int nInputsCount = pNet->getInputsCount();
     int i = 0, j, k;
-    float output;
+    double output;
 
     #pragma omp parallel for private(k,output)
     for (j = 0; j < pNet->getLayerSize(i); j++)
@@ -2754,6 +2861,13 @@ void CTrainingOfMLP::calculate_outputs_and_derivatives(
                     output, pNet->getActivationKind(i));
         }
     }
+
+    i = pNet->getLayersCount() - 1;
+    if ((pNet->getActivationKind(i) == SOFT) && (pNet->getLayerSize(i) > 1))
+    {
+        do_softmax_normalization(&m_aNetOutputs[m_aNetOutputsI[i]],
+                                 pNet->getLayerSize(i));
+    }
 }
 
 /* Подать на вход нейросети pNet входной сигнал из iSample-го примера
@@ -2768,7 +2882,7 @@ void CTrainingOfMLP::calculate_outputs(int iSample,CMultilayerPerceptron* pNet)
     }
     int nInputsCount = pNet->getInputsCount();
     int i = 0, j, k;
-    float output;
+    double output;
 
     #pragma omp parallel for private(k,output)
     for (j = 0; j < pNet->getLayerSize(i); j++)
@@ -2796,6 +2910,13 @@ void CTrainingOfMLP::calculate_outputs(int iSample,CMultilayerPerceptron* pNet)
             m_aNetOutputs[m_aNetOutputsI[i] + j] = activation(
                     output, pNet->getActivationKind(i));
         }
+    }
+
+    i = pNet->getLayersCount() - 1;
+    if ((pNet->getActivationKind(i) == SOFT) && (pNet->getLayerSize(i) > 1))
+    {
+        do_softmax_normalization(&m_aNetOutputs[m_aNetOutputsI[i]],
+                                 pNet->getLayerSize(i));
     }
 }
 
@@ -2835,7 +2956,7 @@ COnlineBackpropTraining::~COnlineBackpropTraining()
 /*****************************************************************************/
 /* Установить значение свойства "НАЧАЛЬНЫЙ КОЭФФИЦИЕНТ СКОРОСТИ ОБУЧЕНИЯ" */
 /*****************************************************************************/
-void COnlineBackpropTraining::setStartLearningRateParam(float value)
+void COnlineBackpropTraining::setStartLearningRateParam(double value)
 {
    if (value <= 0.0)
     {
@@ -2848,7 +2969,7 @@ void COnlineBackpropTraining::setStartLearningRateParam(float value)
 /*****************************************************************************/
 /* Установить значение свойства "КОНЕЧНЫЙ КОЭФФИЦИЕНТ СКОРОСТИ ОБУЧЕНИЯ" */
 /*****************************************************************************/
-void COnlineBackpropTraining::setFinalLearningRateParam(float value)
+void COnlineBackpropTraining::setFinalLearningRateParam(double value)
 {
    if (value <= 0.0)
     {
@@ -2860,7 +2981,7 @@ void COnlineBackpropTraining::setFinalLearningRateParam(float value)
 /*****************************************************************************/
 /* Установить значение свойства "ПАРАМЕТР АДАПТАЦИИ СКОРОСТИ ОБУЧЕНИЯ" */
 /*****************************************************************************/
-void COnlineBackpropTraining::setTheta(float value)
+void COnlineBackpropTraining::setTheta(double value)
 {
     if (value <= 0.0)
     {
@@ -2887,8 +3008,8 @@ Backprop при условии, что на сеть распространен�
 void COnlineBackpropTraining::change_weights_by_BP(int iSample)
 {
     int i, j, k, nInputsCount;
-    float cur_output, cur_error, local_gradient, new_weight;
-    float sample_weight = getSampleWeight(iSample);
+    double cur_output, cur_error, local_gradient, new_weight;
+    double sample_weight = getSampleWeight(iSample);
 
     /* Для каждого нейрона выходного слоя:
        1) вычисляем локальный градиент (по формуле для выходного слоя);
@@ -2898,26 +3019,45 @@ void COnlineBackpropTraining::change_weights_by_BP(int iSample)
     i = m_pTrainedMLP->getLayersCount()-1;
     nInputsCount = m_pTrainedMLP->getInputsCountOfLayer(i);
 
-    #pragma omp parallel for private(cur_error,local_gradient,new_weight)
-    for (j = 0; j < m_pTrainedMLP->getLayerSize(i); j++)
+    if ((m_pTrainedMLP->getActivationKind(i) == SOFT)
+            && (m_pTrainedMLP->getLayerSize(i) > 1))
     {
-        cur_error = (getTrainTarget(iSample, j) - getNetOutput(i, j))
-                    * sample_weight;
+        #pragma omp parallel for private(local_gradient,new_weight)
+        for (j = 0; j < m_pTrainedMLP->getLayerSize(i); j++)
+        {
+            local_gradient = sample_weight
+                    * (getTrainTarget(iSample, j) - getNetOutput(i, j));
 
-        local_gradient = cur_error * getNetOutputD(i,j);
+            new_weight = m_pTrainedMLP->getWeight(i,j,nInputsCount)
+                         + m_rate * local_gradient;
+            m_pTrainedMLP->setWeight(i,j,nInputsCount, new_weight);
 
-        new_weight = m_pTrainedMLP->getWeight(i,j,nInputsCount)
-                     + m_rate * local_gradient;
-        m_pTrainedMLP->setWeight(i,j,nInputsCount, new_weight);
+            m_aLocalGradients2[j] = local_gradient;
+        }
+    }
+    else
+    {
+        #pragma omp parallel for private(cur_error,local_gradient,new_weight)
+        for (j = 0; j < m_pTrainedMLP->getLayerSize(i); j++)
+        {
+            cur_error = (getTrainTarget(iSample, j) - getNetOutput(i, j))
+                        * sample_weight;
 
-        m_aLocalGradients2[j] = local_gradient;
+            local_gradient = cur_error * getNetOutputD(i,j);
+
+            new_weight = m_pTrainedMLP->getWeight(i,j,nInputsCount)
+                         + m_rate * local_gradient;
+            m_pTrainedMLP->setWeight(i,j,nInputsCount, new_weight);
+
+            m_aLocalGradients2[j] = local_gradient;
+        }
     }
 
     /* Если в нейросети есть скрытые слои, то выполняем цикл от последнего
     скрытого слоя до первого */
     if (m_pTrainedMLP->getLayersCount() > 1)
     {
-        float *pTemp;
+        double *pTemp;
         for (i = m_pTrainedMLP->getLayersCount()-2; i >= 0; i--)
         {
             nInputsCount = m_pTrainedMLP->getInputsCountOfLayer(i);
@@ -2991,14 +3131,14 @@ void COnlineBackpropTraining::change_weights_by_BP(int iSample)
 void COnlineBackpropTraining::change_weights_by_IDBD(int iSample)
 {
     int i, j, k, nInputsCount;
-    float cur_output, cur_input, cur_error, local_gradient;
-    float new_weight, delta_weight;
-    float cur_rate, dBetta, newH;
-    float sample_weight = getSampleWeight(iSample);
+    double cur_output, cur_input, cur_error, local_gradient;
+    double new_weight, delta_weight;
+    double cur_rate, dBetta, newH;
+    double sample_weight = getSampleWeight(iSample);
 
     if (m_pTrainedMLP->getLayersCount() > 1)// если есть хотя бы 1 скрытый слой
     {
-        float *pTemp;
+        double *pTemp;
 
         /* Для каждого нейрона выходного слоя:
            1) вычисляем локальный градиент (по формуле для выходного слоя);
@@ -3011,56 +3151,110 @@ void COnlineBackpropTraining::change_weights_by_IDBD(int iSample)
         i = m_pTrainedMLP->getLayersCount()-1;
         nInputsCount = m_pTrainedMLP->getInputsCountOfLayer(i);
 
-        #pragma omp parallel for private(cur_error,local_gradient,dBetta,\
-            cur_rate,delta_weight,new_weight,newH)
-        for (j = 0; j < m_pTrainedMLP->getLayerSize(i); j++)
+        if ((m_pTrainedMLP->getActivationKind(i) == SOFT)
+                && (m_pTrainedMLP->getLayerSize(i) > 1))
         {
-            /* вычисляем ошибку нейрона выходного слоя как разность между
-               реальным и желаемым выходами */
-            cur_error = (getTrainTarget(iSample, j) - getNetOutput(i, j))
-                        * sample_weight;
-
-            // вычисляем локальный градиент
-            local_gradient = cur_error * getNetOutputD(i, j);
-
-            /* вычисляем новое значение параметра Betta для смещения, и на его
-               основе - значение коэффициента скорости обучения для этого же
-               смещения */
-            dBetta = m_theta * local_gradient * getH(i,j,nInputsCount);
-            if (dBetta > 2.0)
+            #pragma omp parallel for private(local_gradient,dBetta,\
+                cur_rate,delta_weight,new_weight,newH)
+            for (j = 0; j < m_pTrainedMLP->getLayerSize(i); j++)
             {
-                dBetta = 2.0;
-            }
-            else
-            {
-                if (dBetta < -2.0)
+                // вычисляем локальный градиент
+                local_gradient = sample_weight
+                        * (getTrainTarget(iSample, j) - getNetOutput(i, j));
+
+                /* вычисляем новое значение параметра Betta для смещения, и на его
+                   основе - значение коэффициента скорости обучения для этого же
+                   смещения */
+                dBetta = m_theta * local_gradient * getH(i,j,nInputsCount);
+                if (dBetta > 2.0)
                 {
-                    dBetta = -2.0;
+                    dBetta = 2.0;
                 }
+                else
+                {
+                    if (dBetta < -2.0)
+                    {
+                        dBetta = -2.0;
+                    }
+                }
+                setBetta(i,j,nInputsCount, getBetta(i,j,nInputsCount) + dBetta);
+                cur_rate = calc_exp(getBetta(i,j,nInputsCount));
+                //cur_rate = m_rate;
+
+                // корректируем смещение нейрона
+                delta_weight = cur_rate * local_gradient;
+                new_weight = m_pTrainedMLP->getWeight(i,j,nInputsCount)
+                             + delta_weight;
+                m_pTrainedMLP->setWeight(i,j,nInputsCount, new_weight);
+
+                // вычисляем новое значение параметра H для смещения
+                newH = 1.0 - cur_rate;
+                if (newH <= 0.0)
+                {
+                    newH = delta_weight;
+                }
+                else
+                {
+                    newH = getH(i,j,nInputsCount) * newH + delta_weight;
+                }
+                setH(i,j,nInputsCount, newH);
+
+                m_aLocalGradients2[j] = local_gradient;
             }
-            setBetta(i,j,nInputsCount, getBetta(i,j,nInputsCount) + dBetta);
-            cur_rate = calc_exp(getBetta(i,j,nInputsCount));
-            //cur_rate = m_rate;
-
-            // корректируем смещение нейрона
-            delta_weight = cur_rate * local_gradient;
-            new_weight = m_pTrainedMLP->getWeight(i,j,nInputsCount)
-                         + delta_weight;
-            m_pTrainedMLP->setWeight(i,j,nInputsCount, new_weight);
-
-            // вычисляем новое значение параметра H для смещения
-            newH = 1.0 - cur_rate;
-            if (newH <= 0.0)
+        }
+        else
+        {
+            #pragma omp parallel for private(cur_error,local_gradient,dBetta,\
+                cur_rate,delta_weight,new_weight,newH)
+            for (j = 0; j < m_pTrainedMLP->getLayerSize(i); j++)
             {
-                newH = delta_weight;
-            }
-            else
-            {
-                newH = getH(i,j,nInputsCount) * newH + delta_weight;
-            }
-            setH(i,j,nInputsCount, newH);
+                /* вычисляем ошибку нейрона выходного слоя как разность между
+                   реальным и желаемым выходами */
+                cur_error = (getTrainTarget(iSample, j) - getNetOutput(i, j))
+                            * sample_weight;
 
-            m_aLocalGradients2[j] = local_gradient;
+                // вычисляем локальный градиент
+                local_gradient = cur_error * getNetOutputD(i, j);
+
+                /* вычисляем новое значение параметра Betta для смещения, и на его
+                   основе - значение коэффициента скорости обучения для этого же
+                   смещения */
+                dBetta = m_theta * local_gradient * getH(i,j,nInputsCount);
+                if (dBetta > 2.0)
+                {
+                    dBetta = 2.0;
+                }
+                else
+                {
+                    if (dBetta < -2.0)
+                    {
+                        dBetta = -2.0;
+                    }
+                }
+                setBetta(i,j,nInputsCount, getBetta(i,j,nInputsCount) + dBetta);
+                cur_rate = calc_exp(getBetta(i,j,nInputsCount));
+                //cur_rate = m_rate;
+
+                // корректируем смещение нейрона
+                delta_weight = cur_rate * local_gradient;
+                new_weight = m_pTrainedMLP->getWeight(i,j,nInputsCount)
+                             + delta_weight;
+                m_pTrainedMLP->setWeight(i,j,nInputsCount, new_weight);
+
+                // вычисляем новое значение параметра H для смещения
+                newH = 1.0 - cur_rate;
+                if (newH <= 0.0)
+                {
+                    newH = delta_weight;
+                }
+                else
+                {
+                    newH = getH(i,j,nInputsCount) * newH + delta_weight;
+                }
+                setH(i,j,nInputsCount, newH);
+
+                m_aLocalGradients2[j] = local_gradient;
+            }
         }
 
         // Цикл по всем скрытым слоям от последнего до первого
@@ -3252,64 +3446,22 @@ void COnlineBackpropTraining::change_weights_by_IDBD(int iSample)
     else // если скрытых слоёв нет, а есть только выходной
     {
         nInputsCount = m_pTrainedMLP->getInputsCount();
-        // Для каждого нейрона слоя (цикл по j)
-        #pragma omp parallel for private(k,cur_input,cur_error,\
-            local_gradient,dBetta,cur_rate,delta_weight,new_weight,newH)
-        for (j = 0; j < m_pTrainedMLP->getLayerSize(0); j++)
+        if ((m_pTrainedMLP->getActivationKind(0) == SOFT)
+                && (m_pTrainedMLP->getLayerSize(0) > 1))
         {
-            /* вычисляем ошибку нейрона слоя как разность между реальным и
-               желаемым выходами */
-            cur_error = (getTrainTarget(iSample, j) - getNetOutput(0, j))
-                        * sample_weight;
-
-            // вычисляем локальный градиент
-            local_gradient = cur_error * getNetOutputD(0, j);
-
-            /* вычисляем новое значение параметра Betta для смещения, и на его
-               основе - значение коэффициента скорости обучения для этого же
-               смещения */
-            dBetta = m_theta * local_gradient * getH(0,j,nInputsCount);
-            if (dBetta > 2.0)
+            // Для каждого нейрона слоя (цикл по j)
+            #pragma omp parallel for private(k,cur_input,\
+                local_gradient,dBetta,cur_rate,delta_weight,new_weight,newH)
+            for (j = 0; j < m_pTrainedMLP->getLayerSize(0); j++)
             {
-                dBetta = 2.0;
-            }
-            else
-            {
-                if (dBetta < -2.0)
-                {
-                    dBetta = -2.0;
-                }
-            }
-            setBetta(0,j,nInputsCount, getBetta(0,j,nInputsCount) + dBetta);
-            cur_rate = calc_exp(getBetta(0,j,nInputsCount));
+                // вычисляем локальный градиент
+                local_gradient = sample_weight
+                        * (getTrainTarget(iSample, j) - getNetOutput(0, j));
 
-            // корректируем смещение нейрона
-            delta_weight = cur_rate * local_gradient;
-            new_weight = m_pTrainedMLP->getWeight(0,j,nInputsCount)
-                         + delta_weight;
-            m_pTrainedMLP->setWeight(0,j,nInputsCount, new_weight);
-
-            // вычисляем новое значение параметра H для смещения
-            newH = 1.0 - cur_rate;
-            if (newH <= 0.0)
-            {
-                newH = delta_weight;
-            }
-            else
-            {
-                newH = getH(0,j,nInputsCount) * newH + delta_weight;
-            }
-            setH(0,j,nInputsCount, newH);
-
-            m_aLocalGradients2[j] = local_gradient;
-
-            // Для всех входов j-го нейрона (цикл по k)
-            for (k = 0; k < nInputsCount; k++)
-            {
-                /* вычисляем новое значение параметра Betta для связи между
-                   k-м входом и j-м нейроном  */
-                dBetta = m_theta * local_gradient * getH(0,j,k)
-                         * getTrainInput(iSample,k);
+                /* вычисляем новое значение параметра Betta для смещения, и на его
+                   основе - значение коэффициента скорости обучения для этого же
+                   смещения */
+                dBetta = m_theta * local_gradient * getH(0,j,nInputsCount);
                 if (dBetta > 2.0)
                 {
                     dBetta = 2.0;
@@ -3321,32 +3473,174 @@ void COnlineBackpropTraining::change_weights_by_IDBD(int iSample)
                         dBetta = -2.0;
                     }
                 }
-                setBetta(0,j,k, getBetta(0,j,k) + dBetta);
+                setBetta(0,j,nInputsCount, getBetta(0,j,nInputsCount) + dBetta);
+                cur_rate = calc_exp(getBetta(0,j,nInputsCount));
 
-                /* на основе нового значения Betta вычисляем коэффициент
-                   скорости обучения */
-                cur_rate = calc_exp(getBetta(0,j,k));
+                // корректируем смещение нейрона
+                delta_weight = cur_rate * local_gradient;
+                new_weight = m_pTrainedMLP->getWeight(0,j,nInputsCount)
+                             + delta_weight;
+                m_pTrainedMLP->setWeight(0,j,nInputsCount, new_weight);
 
-                cur_input = getTrainInput(iSample, k);
-
-                /* вычисляем новое значение веса связи между k-м входом и
-                   j-м нейроном */
-                delta_weight = cur_rate * cur_input * local_gradient;
-                new_weight = m_pTrainedMLP->getWeight(0,j,k) + delta_weight;
-                m_pTrainedMLP->setWeight(0,j,k, new_weight);
-
-                /* вычисляем новое значение параметра H для связи между
-                   k-м входом и j-м нейроном */
-                newH = 1.0 - cur_rate * cur_input * cur_input;
+                // вычисляем новое значение параметра H для смещения
+                newH = 1.0 - cur_rate;
                 if (newH <= 0.0)
                 {
                     newH = delta_weight;
                 }
                 else
                 {
-                    newH = getH(0,j,k) * newH + delta_weight;
+                    newH = getH(0,j,nInputsCount) * newH + delta_weight;
                 }
-                setH(0,j,k, newH);
+                setH(0,j,nInputsCount, newH);
+
+                m_aLocalGradients2[j] = local_gradient;
+
+                // Для всех входов j-го нейрона (цикл по k)
+                for (k = 0; k < nInputsCount; k++)
+                {
+                    /* вычисляем новое значение параметра Betta для связи между
+                       k-м входом и j-м нейроном  */
+                    dBetta = m_theta * local_gradient * getH(0,j,k)
+                             * getTrainInput(iSample,k);
+                    if (dBetta > 2.0)
+                    {
+                        dBetta = 2.0;
+                    }
+                    else
+                    {
+                        if (dBetta < -2.0)
+                        {
+                            dBetta = -2.0;
+                        }
+                    }
+                    setBetta(0,j,k, getBetta(0,j,k) + dBetta);
+
+                    /* на основе нового значения Betta вычисляем коэффициент
+                       скорости обучения */
+                    cur_rate = calc_exp(getBetta(0,j,k));
+
+                    cur_input = getTrainInput(iSample, k);
+
+                    /* вычисляем новое значение веса связи между k-м входом и
+                       j-м нейроном */
+                    delta_weight = cur_rate * cur_input * local_gradient;
+                    new_weight = m_pTrainedMLP->getWeight(0,j,k) + delta_weight;
+                    m_pTrainedMLP->setWeight(0,j,k, new_weight);
+
+                    /* вычисляем новое значение параметра H для связи между
+                       k-м входом и j-м нейроном */
+                    newH = 1.0 - cur_rate * cur_input * cur_input;
+                    if (newH <= 0.0)
+                    {
+                        newH = delta_weight;
+                    }
+                    else
+                    {
+                        newH = getH(0,j,k) * newH + delta_weight;
+                    }
+                    setH(0,j,k, newH);
+                }
+            }
+        }
+        else
+        {
+            // Для каждого нейрона слоя (цикл по j)
+            #pragma omp parallel for private(k,cur_input,cur_error,\
+                local_gradient,dBetta,cur_rate,delta_weight,new_weight,newH)
+            for (j = 0; j < m_pTrainedMLP->getLayerSize(0); j++)
+            {
+                /* вычисляем ошибку нейрона слоя как разность между реальным и
+                   желаемым выходами */
+                cur_error = (getTrainTarget(iSample, j) - getNetOutput(0, j))
+                            * sample_weight;
+
+                // вычисляем локальный градиент
+                local_gradient = cur_error * getNetOutputD(0, j);
+
+                /* вычисляем новое значение параметра Betta для смещения, и на его
+                   основе - значение коэффициента скорости обучения для этого же
+                   смещения */
+                dBetta = m_theta * local_gradient * getH(0,j,nInputsCount);
+                if (dBetta > 2.0)
+                {
+                    dBetta = 2.0;
+                }
+                else
+                {
+                    if (dBetta < -2.0)
+                    {
+                        dBetta = -2.0;
+                    }
+                }
+                setBetta(0,j,nInputsCount, getBetta(0,j,nInputsCount) + dBetta);
+                cur_rate = calc_exp(getBetta(0,j,nInputsCount));
+
+                // корректируем смещение нейрона
+                delta_weight = cur_rate * local_gradient;
+                new_weight = m_pTrainedMLP->getWeight(0,j,nInputsCount)
+                             + delta_weight;
+                m_pTrainedMLP->setWeight(0,j,nInputsCount, new_weight);
+
+                // вычисляем новое значение параметра H для смещения
+                newH = 1.0 - cur_rate;
+                if (newH <= 0.0)
+                {
+                    newH = delta_weight;
+                }
+                else
+                {
+                    newH = getH(0,j,nInputsCount) * newH + delta_weight;
+                }
+                setH(0,j,nInputsCount, newH);
+
+                m_aLocalGradients2[j] = local_gradient;
+
+                // Для всех входов j-го нейрона (цикл по k)
+                for (k = 0; k < nInputsCount; k++)
+                {
+                    /* вычисляем новое значение параметра Betta для связи между
+                       k-м входом и j-м нейроном  */
+                    dBetta = m_theta * local_gradient * getH(0,j,k)
+                             * getTrainInput(iSample,k);
+                    if (dBetta > 2.0)
+                    {
+                        dBetta = 2.0;
+                    }
+                    else
+                    {
+                        if (dBetta < -2.0)
+                        {
+                            dBetta = -2.0;
+                        }
+                    }
+                    setBetta(0,j,k, getBetta(0,j,k) + dBetta);
+
+                    /* на основе нового значения Betta вычисляем коэффициент
+                       скорости обучения */
+                    cur_rate = calc_exp(getBetta(0,j,k));
+
+                    cur_input = getTrainInput(iSample, k);
+
+                    /* вычисляем новое значение веса связи между k-м входом и
+                       j-м нейроном */
+                    delta_weight = cur_rate * cur_input * local_gradient;
+                    new_weight = m_pTrainedMLP->getWeight(0,j,k) + delta_weight;
+                    m_pTrainedMLP->setWeight(0,j,k, new_weight);
+
+                    /* вычисляем новое значение параметра H для связи между
+                       k-м входом и j-м нейроном */
+                    newH = 1.0 - cur_rate * cur_input * cur_input;
+                    if (newH <= 0.0)
+                    {
+                        newH = delta_weight;
+                    }
+                    else
+                    {
+                        newH = getH(0,j,k) * newH + delta_weight;
+                    }
+                    setH(0,j,k, newH);
+                }
             }
         }
     }
@@ -3367,9 +3661,9 @@ void COnlineBackpropTraining::change_weights_by_IDBD(int iSample)
 void COnlineBackpropTraining::initialize_Betta_and_H()
 {
     int nAllWeightsCount = m_pTrainedMLP->getAllWeightsCount();
-    float mean_inputs_ratio = 0.0, instant_inputs_ratio;
-    float layers_ratio = 1.0;
-    float current_learning_rate, current_betta;
+    double mean_inputs_ratio = 0.0, instant_inputs_ratio;
+    double layers_ratio = 1.0;
+    double current_learning_rate, current_betta;
     int iLayer, iWeight = 0;
     int nInputsCount, nLayerSize, nWeightsOfLayer;
     int iCounter;
@@ -3378,11 +3672,11 @@ void COnlineBackpropTraining::initialize_Betta_and_H()
         mean_inputs_ratio += (m_pTrainedMLP->getInputsCountOfLayer(iLayer) + 1);
         layers_ratio *= 1.2;
     }
-    mean_inputs_ratio /= ((float)m_pTrainedMLP->getLayersCount());
+    mean_inputs_ratio /= ((double)m_pTrainedMLP->getLayersCount());
     mean_inputs_ratio= sqrt(mean_inputs_ratio);
 
-    m_aBetta = new float[nAllWeightsCount];
-    m_aH = new float[nAllWeightsCount];
+    m_aBetta = new double[nAllWeightsCount];
+    m_aH = new double[nAllWeightsCount];
     nInputsCount = m_pTrainedMLP->getInputsCount();
     for (iLayer = 0; iLayer < m_pTrainedMLP->getLayersCount(); iLayer++)
     {
@@ -3427,8 +3721,8 @@ void COnlineBackpropTraining::initialize_training()
             nMaxLayerSize = m_pTrainedMLP->getLayerSize(i);
         }
     }
-    m_aLocalGradients1 = new float[nMaxLayerSize];
-    m_aLocalGradients2 = new float[nMaxLayerSize];
+    m_aLocalGradients1 = new double[nMaxLayerSize];
+    m_aLocalGradients2 = new double[nMaxLayerSize];
     if (m_bAdaptiveRate)
     {
         initialize_Betta_and_H();
@@ -3534,7 +3828,7 @@ TTrainingState COnlineBackpropTraining::do_epoch(int nEpoch)
 void CBatchBackpropTraining::calculate_cur_gradient(int iSample)
 {
     int i, j, k, nInputsCount;
-    float cur_output, cur_error, mean_error = 0.0;
+    double cur_output, cur_error, mean_error = 0.0;
 
     /* Для каждого нейрона выходного слоя:
        1) вычисляем локальный градиент (по формуле для выходного слоя);
@@ -3543,18 +3837,39 @@ void CBatchBackpropTraining::calculate_cur_gradient(int iSample)
     i = m_pTrainedMLP->getLayersCount()-1;
     nInputsCount = m_pTrainedMLP->getInputsCountOfLayer(i);
 
-    #pragma omp parallel for private(cur_output,cur_error)\
-        reduction(+:mean_error)
-    for (j = 0; j < m_pTrainedMLP->getLayerSize(i); j++)
+    if ((m_pTrainedMLP->getActivationKind(i) == SOFT)
+            && (m_pTrainedMLP->getLayerSize(i) > 1))
     {
-        cur_output = getNetOutput(i, j);
-        cur_error = getTrainTarget(iSample, j) - cur_output;
+        #pragma omp parallel for private(cur_output,cur_error)\
+            reduction(+:mean_error)
+        for (j = 0; j < m_pTrainedMLP->getLayerSize(i); j++)
+        {
+            cur_output = getNetOutput(i, j);
+            cur_error = -getTrainTarget(iSample, j) * log(
+                        (cur_output > DBL_EPSILON) ? cur_output : DBL_EPSILON);
 
-        mean_error += (cur_error * cur_error);
+            mean_error += cur_error;
 
-        m_aLocalGradients2[j] = cur_error * getNetOutputD(i, j);
+            m_aLocalGradients2[j] = getTrainTarget(iSample, j) - cur_output;
 
-        setCurGradient(i, j, nInputsCount, m_aLocalGradients2[j]);
+            setCurGradient(i, j, nInputsCount, m_aLocalGradients2[j]);
+        }
+    }
+    else
+    {
+        #pragma omp parallel for private(cur_output,cur_error)\
+            reduction(+:mean_error)
+        for (j = 0; j < m_pTrainedMLP->getLayerSize(i); j++)
+        {
+            cur_output = getNetOutput(i, j);
+            cur_error = getTrainTarget(iSample, j) - cur_output;
+
+            mean_error += (cur_error * cur_error);
+
+            m_aLocalGradients2[j] = cur_error * getNetOutputD(i, j);
+
+            setCurGradient(i, j, nInputsCount, m_aLocalGradients2[j]);
+        }
     }
     mean_error /= m_pTrainedMLP->getLayerSize(i);
     m_meanError += (mean_error * getSampleWeight(iSample));
@@ -3563,7 +3878,7 @@ void CBatchBackpropTraining::calculate_cur_gradient(int iSample)
     скрытого слоя до первого */
     if (m_pTrainedMLP->getLayersCount() > 1)
     {
-        float *pTemp;
+        double *pTemp;
         for (i = m_pTrainedMLP->getLayersCount()-2; i >= 0; i--)
         {
             nInputsCount = m_pTrainedMLP->getInputsCountOfLayer(i);
@@ -3645,7 +3960,7 @@ CBatchBackpropTraining::~CBatchBackpropTraining()
     finalize_training();
 }
 
-void CBatchBackpropTraining::setEpsilon(float value)
+void CBatchBackpropTraining::setEpsilon(double value)
 {
     if ((value < 0.0) || (value >= 1.0))
     {
@@ -3674,11 +3989,11 @@ void CBatchBackpropTraining::initialize_training()
             nMaxLayerSize = m_pTrainedMLP->getLayerSize(i);
         }
     }
-    m_aLocalGradients1 = new float[nMaxLayerSize];
-    m_aLocalGradients2 = new float[nMaxLayerSize];
+    m_aLocalGradients1 = new double[nMaxLayerSize];
+    m_aLocalGradients2 = new double[nMaxLayerSize];
 
-    m_aCurG = new float[m_pTrainedMLP->getAllWeightsCount()];
-    m_aMeanG = new float[m_pTrainedMLP->getAllWeightsCount()];
+    m_aCurG = new double[m_pTrainedMLP->getAllWeightsCount()];
+    m_aMeanG = new double[m_pTrainedMLP->getAllWeightsCount()];
 
     int nWeightsCountOfLayer = m_pTrainedMLP->getLayerSize(0)
                                * (m_pTrainedMLP->getInputsCount() + 1);
@@ -3804,8 +4119,8 @@ void CResilientBackpropTraining::initialize_training()
 
     int nAllWeightsCount = m_pTrainedMLP->getAllWeightsCount();
 
-    m_aRates = new float[nAllWeightsCount];
-    m_aPrevG = new float[nAllWeightsCount];
+    m_aRates = new double[nAllWeightsCount];
+    m_aPrevG = new double[nAllWeightsCount];
     for (int i = 0; i < nAllWeightsCount; i++)
     {
         m_aPrevG[i] = 0.0;
@@ -3834,7 +4149,7 @@ void CResilientBackpropTraining::finalize_training()
 /*****************************************************************************/
 /* Установить новое значение свойства "НАЧАЛЬНОЕ ЗНАЧЕНИЕ СКОРОСТИ ОБУЧЕНИЯ" */
 /*****************************************************************************/
-void CResilientBackpropTraining::setInitialLearningRate(float learning_rate)
+void CResilientBackpropTraining::setInitialLearningRate(double learning_rate)
 {
     if (learning_rate <= 0.0)
     {
@@ -3873,8 +4188,8 @@ void CResilientBackpropTraining::change_weights(int nEpoch,
     Q_UNUSED(training_state);
 
     int i, j, k, n, iStartWeight = 0, iWeight;
-    float temp;
-    float new_weight, new_rate;
+    double temp;
+    double new_weight, new_rate;
     for (i = 0; i < m_pTrainedMLP->getLayersCount(); i++)
     {
         n = m_pTrainedMLP->getInputsCountOfLayer(i);
@@ -3930,7 +4245,7 @@ void CResilientBackpropTraining::change_weights(int nEpoch,
 /*****************************************************************************/
 /* Установить новое значение свойства "МАКСИМАЛЬНАЯ СКОРОСТЬ ОБУЧЕНИЯ". */
 /*****************************************************************************/
-void CGradientDescentTraining::setMaxLearningRate(float value)
+void CGradientDescentTraining::setMaxLearningRate(double value)
 {
     if (value <= 0.0)
     {
@@ -3954,9 +4269,10 @@ void CGradientDescentTraining::setMaxItersForLR(int value)
 m_aDirection[] (критерием оптимальности выступает ошибка обучения etr, которую
 надо минимизировать). */
 bool CGradientDescentTraining::find_init_lrs(
-        float& lr1,float& lr2,float& lr3, float& etr1,float& etr2,float& etr3)
+        double& lr1,double& lr2,double& lr3,
+        double& etr1, double& etr2, double& etr3)
 {
-    float ulim, u, r, q, fu, tiny = FLT_EPSILON;
+    double ulim, u, r, q, fu, tiny = 100.0 * DBL_EPSILON;
 
     lr1 = 0.0;
     lr3 = m_maxLearningRate;
@@ -4036,11 +4352,12 @@ bool CGradientDescentTraining::find_init_lrs(
    которую надо минимизировать). В качестве стартовых точек метода Брента
    используются (lr1; etr1), (lr2; etr2) и (lr3; etr3). */
 void CGradientDescentTraining::find_optimal_lr_by_brent(
-        float lr1, float lr2, float lr3, float tol, float& lr, float& etr)
+        double lr1, double lr2, double lr3, double tol,
+        double& lr, double& etr)
 {
-    float a, b, d, etemp, fu, fv, fw, fx, p, q, r, tol1, tol2, u, v, w, x, xm;
-    float e = 0.0;
-    float eps = FLT_EPSILON;
+    double a, b, d, etemp, fu, fv, fw, fx, p, q, r, tol1, tol2, u, v, w, x, xm;
+    double e = 0.0;
+    double eps = 100.0 * DBL_EPSILON;
 
     a = (lr1 < lr3 ? lr1 : lr3);
     b = (lr1 > lr3 ? lr1 : lr3);
@@ -4135,9 +4452,10 @@ void CGradientDescentTraining::find_optimal_lr_by_brent(
 Найденное значение оптимального шага записывается в передаваемый по ссылке
 аргумент lr, а соответствующее значение целевой функции (функции ошибки) - в
 передаваемый по ссылке аргумент etr. */
-void CGradientDescentTraining::find_optimal_learning_rate(float& lr,float& etr)
+void CGradientDescentTraining::find_optimal_learning_rate(
+        double& lr, double& etr)
 {
-    float lr1, lr2, lr3, etr1, etr2, etr3;
+    double lr1, lr2, lr3, etr1, etr2, etr3;
     find_init_lrs(lr1, lr2, lr3, etr1, etr2, etr3);
     if ((etr1 > getMeanError()) && (etr2 > getMeanError())
         && (etr3 > getMeanError()))
@@ -4147,14 +4465,14 @@ void CGradientDescentTraining::find_optimal_learning_rate(float& lr,float& etr)
     }
     else
     {
-        float tol = m_maxLearningRate / 100.0;
+        double tol = m_maxLearningRate / 100.0;
         if (tol > 0.1)
         {
             tol = 0.1;
         }
-        else if (tol < FLT_EPSILON)
+        else if (tol < (100.0 * DBL_EPSILON))
         {
-            tol = FLT_EPSILON;
+            tol = 100.0 * DBL_EPSILON;
         }
         find_optimal_lr_by_brent(lr1, lr2, lr3, tol, lr, etr);
         if (lr <= 0.0)
@@ -4175,7 +4493,7 @@ void CGradientDescentTraining::find_optimal_learning_rate(float& lr,float& etr)
 
 /* Вычислить среднеквадратичную ошибку обучения как функцию от длины шага
 stepsize в направлении m_aDirection. */
-float CGradientDescentTraining::calculate_training_error(float stepsize)
+double CGradientDescentTraining::calculate_training_error(double stepsize)
 {
     int iStartWeight = 0, iWeight, i, j, k, n;
     for (i = 0; i < m_pTrainedMLP->getLayersCount(); i++)
@@ -4195,7 +4513,7 @@ float CGradientDescentTraining::calculate_training_error(float stepsize)
         iStartWeight += (m_pTrainedMLP->getLayerSize(i) * (n+1));
     }
 
-    float mean_error = 0.0, cur_error, temp;
+    double mean_error = 0.0, cur_error, temp;
     i = m_pTempMLP->getLayersCount() - 1;
     for (int iSample = 0; iSample < getNumberOfTrainSamples(); iSample++)
     {
@@ -4253,14 +4571,14 @@ void CGradientDescentTraining::initialize_training()
     CBatchBackpropTraining::initialize_training();
 
     int i, n = m_pTrainedMLP->getAllWeightsCount();
-    m_aDirection = new float[n];
+    m_aDirection = new double[n];
     for (i = 0; i < n; i++)
     {
         m_aDirection[i] = 0.0;
     }
     if (m_bConjugateGradient)
     {
-        m_aOldG = new float[n];
+        m_aOldG = new double[n];
     }
 
     m_pTempMLP = new CMultilayerPerceptron((*m_pTrainedMLP));
@@ -4299,7 +4617,7 @@ void CGradientDescentTraining::change_weights(int nEpoch,
     {
         if (nEpoch > 1)
         {
-            float betta, temp_val_1 = 0.0, temp_val_2 = 0.0;
+            double betta, temp_val_1 = 0.0, temp_val_2 = 0.0;
             /* Вычисление коэффициента betta по формуле Полака-Рибъера.
             В temp_val_1 записывается числитель формулы, а в temp_val_2 -
             знаменатель.
@@ -4412,7 +4730,7 @@ void CGradientDescentTraining::change_weights(int nEpoch,
     }
 
     /* Определяем оптимальную длину шага в направлении m_aDirection. */
-    float lr, new_error, new_weight;
+    double lr, new_error, new_weight;
     find_optimal_learning_rate(lr, new_error);
     if (new_error < getMeanError())
     {
@@ -4447,10 +4765,10 @@ void CGradientDescentTraining::change_weights(int nEpoch,
 /*****************************************************************************/
 
 /* Выполнить SOFTMAX-нормализацию вектора данных data[] длиной n. */
-void do_softmax_normalization(float data[], int n)
+void do_softmax_normalization(double data[], int n)
 {
     register int i;
-    float sum = 0.0;
+    double sum = 0.0;
     for (i = 0; i < n; i++)
     {
         data[i] = exp(data[i]);
@@ -4485,13 +4803,13 @@ void calculate_rand_indexes(int aIndexes[], int nLength)
 /*****************************************************************************/
 /* Вычислить среднеабсолютную ошибку регрессии */
 /*****************************************************************************/
-float regression_error(float output, float target)
+double regression_error(double output, double target)
 {
-    float result = fabs(output - target);
-    if (result > FLT_EPSILON)
+    double result = fabs(output - target);
+    if (result > DBL_EPSILON)
     {
-        float temp = fabs(target);
-        if (temp > FLT_EPSILON)
+        double temp = fabs(target);
+        if (temp > DBL_EPSILON)
         {
             result /= fabs(target);
             if (ISNAN(result) || !(ISFINITE(result)))
@@ -4522,7 +4840,7 @@ float regression_error(float output, float target)
 aSignal2[] (неважно, входные это сигналы или желаемые выходные) одинакового
 размера nSignalSize. Вернуть true, если все компоненты входных сигналов
 одинаковы, и false, если обнаружены различия */
-bool same_train_signals(const float aSignal1[], const float aSignal2[],
+bool same_train_signals(const double aSignal1[], const double aSignal2[],
                         int nSignalSize)
 {
     if ((aSignal1 == 0) && (aSignal2 == 0))
@@ -4543,11 +4861,11 @@ bool same_train_signals(const float aSignal1[], const float aSignal2[],
     }
 
     bool res = true;
-    float diff;
+    double diff;
     for (int i = 0; i < nSignalSize; i++)
     {
         diff = fabs(aSignal1[i] - aSignal2[i]);
-        if (diff > FLT_EPSILON)
+        if (diff > DBL_EPSILON)
         {
             res = false;
             break;
@@ -4558,7 +4876,7 @@ bool same_train_signals(const float aSignal1[], const float aSignal2[],
 
 /* Найти номер максимального компонента в сигнале aSignal[] размером
 nSignalSize. */
-int find_maximum_component(const float aSignal[], int nSignalSize)
+int find_maximum_component(const double aSignal[], int nSignalSize)
 {
     if ((aSignal == 0) || (nSignalSize <= 0))
     {
@@ -4590,8 +4908,8 @@ nTrainInputs и nTrainTargets.
    Если функция успешно выполнила свою работу, то возвращается true. В случае
 ошибки (например, файл sFileName не существует, или в файле не те данные)
 возвращается false. */
-bool load_trainset(const QString& sFileName, float aTrainInputs[],
-                   float aTrainTargets[], int& nTrainSamples,
+bool load_trainset(const QString& sFileName, double aTrainInputs[],
+                   double aTrainTargets[], int& nTrainSamples,
                    int& nTrainInputs, int& nTrainTargets)
 {
     QFile trainsetFile(sFileName);
@@ -4600,7 +4918,7 @@ bool load_trainset(const QString& sFileName, float aTrainInputs[],
         return false;
     }
     QDataStream trainsetStream(&trainsetFile);
-    trainsetStream.setFloatingPointPrecision(QDataStream::SinglePrecision);
+    trainsetStream.setFloatingPointPrecision(QDataStream::DoublePrecision);
     if (trainsetStream.status() != QDataStream::Ok)
     {
         return false;
@@ -4633,7 +4951,7 @@ bool load_trainset(const QString& sFileName, float aTrainInputs[],
     }
 
     int i, j;
-    float temp_value;
+    double temp_value;
     bool result = true;
     for (i = 0; i < nTrainSamples; i++)
     {
@@ -4676,8 +4994,8 @@ aTrainInputs[] и aTrainTargets[] соответственно.
    Если функция успешно выполнила свою работу, то возвращается true. В случае
 ошибки (например, файл sFileName не существует, или размеры сохраняемого
 обучающего множества невозможны), возвращается false */
-bool save_trainset(const QString& sFileName, float aTrainInputs[],
-                   float aTrainTargets[], int nTrainSamples,
+bool save_trainset(const QString& sFileName, const double aTrainInputs[],
+                   const double aTrainTargets[], int nTrainSamples,
                    int nTrainInputs, int nTrainTargets)
 {
     if ((nTrainSamples <= 0) || (nTrainInputs <= 0) || (nTrainTargets < 0))
@@ -4695,7 +5013,7 @@ bool save_trainset(const QString& sFileName, float aTrainInputs[],
         return false;
     }
     QDataStream trainsetStream(&trainsetFile);
-    trainsetStream.setFloatingPointPrecision(QDataStream::SinglePrecision);
+    trainsetStream.setFloatingPointPrecision(QDataStream::DoublePrecision);
     if (trainsetStream.status() != QDataStream::Ok)
     {
         return false;
@@ -4711,7 +5029,7 @@ bool save_trainset(const QString& sFileName, float aTrainInputs[],
     }
 
     int i, j;
-    float temp_value;
+    double temp_value;
     bool result = true;
     for (i = 0; i < nTrainSamples; i++)
     {

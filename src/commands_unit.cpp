@@ -27,6 +27,7 @@
 #include <QStringList>
 #include <QVector>
 #include <QTextStream>
+#include <QDataStream>
 
 #include "additional_unit.h"
 #include "error_messages.h"
@@ -85,6 +86,7 @@ QString layer_description_to_string(const CMultilayerPerceptron& mlp,
     const char *szNeuron_1 = "нейрон";
     const char *szNeuron_2_4 = "нейрона";
     const char *szNeurons = "нейронов";
+    const char *szSoftmax = " с функциями активации SOFTMAX.";
     const char *szSigmoid = " с сигмоидальными функциями активации.";
     const char *szLinear = " с линейными функциями активации.";
     const int nNeuronsNumber = mlp.getLayerSize(iLayer);
@@ -140,7 +142,14 @@ QString layer_description_to_string(const CMultilayerPerceptron& mlp,
     }
     else
     {
-        sResult += QString(szLinear);
+        if (mlp.getActivationKind(iLayer) == SOFT)
+        {
+            sResult += QString(szSoftmax);
+        }
+        else
+        {
+            sResult += QString(szLinear);
+        }
     }
 
     return sResult;
@@ -285,7 +294,15 @@ bool string_to_layer(const QString& sStr, int& nLayerSize,
                     }
                     else
                     {
-                        result = false;
+                        if (sActivation.compare("max", Qt::CaseInsensitive) == 0)
+                        {
+                            result = true;
+                            activationKind = SOFT;
+                        }
+                        else
+                        {
+                            result = false;
+                        }
                     }
                 }
             }
@@ -367,6 +384,12 @@ bool parse_mlp_structure_description(const QString& sStr, int& nInputsCount,
                         if (string_to_layer(strParts[i+1], nLayerSize,
                                             activationKind))
                         {
+                            if ((activationKind == SOFT)
+                                    && (i < (nLayersCount - 1)))
+                            {
+                                result = false;
+                                break;
+                            }
                             if (aSizesOfLayers != NULL)
                             {
                                 aSizesOfLayers[i] = nLayerSize;
@@ -1692,7 +1715,7 @@ aGroupsOfDivergentSamples, на первом уровне которого - г�
 примеров, а на втором уровне - индексы противоречивых примеров в обучающем
 множестве для каждой из групп. */
 void find_divergent_samples_in_train_set(
-        const float aTrainInputs[], const float aTrainTargets[],
+        const double aTrainInputs[], const double aTrainTargets[],
         int nSamplesNumber, int nInputSize, int nOutputSize,
         QList<QList<int> >& aGroupsOfDivergentSamples)
 {
@@ -1770,7 +1793,7 @@ aGroupsOfRepeatingSamples, на первом уровне которого - г�
 примеров, а на втором уровне - индексы повторяющихся примеров в обучающем
 множестве для каждой из групп. */
 void find_repeating_samples_in_train_set(
-        const float aTrainInputs[], const float aTrainTargets[],
+        const double aTrainInputs[], const double aTrainTargets[],
         int nSamplesNumber, int nInputSize, int nOutputSize,
         QList<QList<int> >& aGroupsOfRepeatingSamples)
 {
@@ -1933,7 +1956,7 @@ aGroupsOfDivergentSamples, на первом уровне которого - г�
 примеров, а на втором уровне - индексы противоречивых примеров в обучающем
 множестве для каждой из групп. */
 int remove_divergent_samples(
-        float aTrainInputs[], float aTrainTargets[],
+        double aTrainInputs[], double aTrainTargets[],
         int nSamplesNumber, int nInputSize, int nOutputSize,
         const QList<QList<int> >& aGroupsOfDivergentSamples)
 {
@@ -1961,10 +1984,10 @@ int remove_divergent_samples(
             {
                 memmove(&aTrainInputs[j*nInputSize],
                         &aTrainInputs[(j+1)*nInputSize],
-                        (res-j-1)*nInputSize*sizeof(float));
+                        (res-j-1)*nInputSize*sizeof(double));
                 memmove(&aTrainTargets[j*nOutputSize],
                         &aTrainTargets[(j+1)*nOutputSize],
-                        (res-j-1)*nOutputSize*sizeof(float));
+                        (res-j-1)*nOutputSize*sizeof(double));
             }
             res--;
         }
@@ -1989,7 +2012,7 @@ aGroupsOfRepeatingSamples, на первом уровне которого - г�
 примеров, а на втором уровне - индексы повторяющихся примеров в обучающем
 множестве для каждой из групп. */
 int remove_repeating_samples(
-        float aTrainInputs[], float aTrainTargets[],
+        double aTrainInputs[], double aTrainTargets[],
         int nSamplesNumber, int nInputSize, int nOutputSize,
         const QList<QList<int> >& aGroupsOfRepeatingSamples)
 {
@@ -2019,10 +2042,10 @@ int remove_repeating_samples(
             {
                 memmove(&aTrainInputs[j*nInputSize],
                         &aTrainInputs[(j+1)*nInputSize],
-                        (res-j-1)*nInputSize*sizeof(float));
+                        (res-j-1)*nInputSize*sizeof(double));
                 memmove(&aTrainTargets[j*nOutputSize],
                         &aTrainTargets[(j+1)*nOutputSize],
-                        (res-j-1)*nOutputSize*sizeof(float));
+                        (res-j-1)*nOutputSize*sizeof(double));
             }
             res--;
         }
@@ -2035,7 +2058,7 @@ int remove_repeating_samples(
 }
 
 int unite_divergent_samples(
-        float aTrainInputs[], float aTrainTargets[],
+        double aTrainInputs[], double aTrainTargets[],
         int nSamplesNumber, int nInputSize, int nOutputSize,
         const QList<QList<int> >& aGroupsOfDivergentSamples,
         TSolvedTask task)
@@ -2044,7 +2067,7 @@ int unite_divergent_samples(
     QList<QList<int> >::const_iterator it1;
     QList<int>::const_iterator it2, it3;
     int i, j, n, iMax, res;
-    QVector<float> aTempOutput(nOutputSize);
+    QVector<double> aTempOutput(nOutputSize);
 
     aRemovedSamples.fill(false);
     for (it1 = aGroupsOfDivergentSamples.begin();
@@ -2106,10 +2129,10 @@ int unite_divergent_samples(
             {
                 memmove(&aTrainInputs[j*nInputSize],
                         &aTrainInputs[(j+1)*nInputSize],
-                       (res-j-1)*nInputSize*sizeof(float));
+                       (res-j-1)*nInputSize*sizeof(double));
                 memmove(&aTrainTargets[j*nOutputSize],
                         &aTrainTargets[(j+1)*nOutputSize],
-                        (res-j-1)*nOutputSize*sizeof(float));
+                        (res-j-1)*nOutputSize*sizeof(double));
             }
             res--;
         }
@@ -2156,7 +2179,7 @@ aCSVData. При этом предполагается, что длина каж
 nSizeOfCSVRow. Вернуть количество прочитанных строк, если чтение завершилось
 успехом, и ноль - в случае неудачи, вызванной какой-либо ошибкой. */
 int readCSV(const QString& sCSVFile, int nSizeOfCSVRow,
-            QList<QVector<float> >& aCSVData)
+            QList<QVector<double> >& aCSVData)
 {
     int result = 0;
     QFile csvFile(sCSVFile);
@@ -2171,7 +2194,7 @@ int readCSV(const QString& sCSVFile, int nSizeOfCSVRow,
     QString sReadLine;
     QStringList aLineParts;
     QStringList::iterator it;
-    QVector<float> aCSVRow(nSizeOfCSVRow);
+    QVector<double> aCSVRow(nSizeOfCSVRow);
     bool ok = true;
     int i;
 
@@ -2921,7 +2944,7 @@ bool useMLP(const TCmdParams& rCmdParams)
         return false;
     }
 
-    float *aTestInputs = 0, *aTestTargets = 0, *aResultInputs = 0;
+    double *aTestInputs = 0, *aTestTargets = 0, *aResultInputs = 0;
     int nTestSamples, nTestInputs, nTestTargets;
     if (!load_trainset(sInputSet, 0, 0, nTestSamples,nTestInputs,nTestTargets))
     {
@@ -2944,10 +2967,10 @@ bool useMLP(const TCmdParams& rCmdParams)
         bool bDurationIsCalculated = false;
         time_t start_time = 0, end_time = 0;
 
-        aTestInputs = new float[nTestSamples * nTestInputs];
+        aTestInputs = new double[nTestSamples * nTestInputs];
         if (nTestTargets > 0)
         {
-            aTestTargets = new float[nTestSamples * nTestTargets];
+            aTestTargets = new double[nTestSamples * nTestTargets];
         }
         if (!load_trainset(sInputSet, aTestInputs, aTestTargets, nTestSamples,
                            nTestInputs, nTestTargets))
@@ -2958,7 +2981,7 @@ bool useMLP(const TCmdParams& rCmdParams)
 
         if (result && rCmdParams.contains("out"))
         {
-            aResultInputs = new float[nTestSamples * nTestTargets];
+            aResultInputs = new double[nTestSamples * nTestTargets];
         }
         if (result && (nTestTargets > 0))
         {
@@ -3190,15 +3213,15 @@ bool separateTrainset(const TCmdParams& rCmdParams)
         return false;
     }
 
-    float *aTrainInputs = 0, *aTrainTargets = 0;
-    float *aTempTrainSample = 0;
+    double *aTrainInputs = 0, *aTrainTargets = 0;
+    double *aTempTrainSample = 0;
     int *aTrainIndexes = 0;
     try
     {
-        aTrainInputs = new float[nTrainSamples * nTrainInputs];
+        aTrainInputs = new double[nTrainSamples * nTrainInputs];
         if (nTrainTargets > 0)
         {
-            aTrainTargets = new float[nTrainSamples * nTrainTargets];
+            aTrainTargets = new double[nTrainSamples * nTrainTargets];
         }
         if (!load_trainset(sTrainSet, aTrainInputs, aTrainTargets,
                            nTrainSamples, nTrainInputs, nTrainTargets))
@@ -3207,9 +3230,9 @@ bool separateTrainset(const TCmdParams& rCmdParams)
         }
         else
         {
-            size_t nInputDataSize = nTrainInputs * sizeof(float);
-            size_t nTargetDataSize = nTrainTargets * sizeof(float);
-            aTempTrainSample = new float[nTrainInputs + nTrainTargets];
+            size_t nInputDataSize = nTrainInputs * sizeof(double);
+            size_t nTargetDataSize = nTrainTargets * sizeof(double);
+            aTempTrainSample = new double[nTrainInputs + nTrainTargets];
             aTrainIndexes = new int[nTrainSamples];
             calculate_rand_indexes(aTrainIndexes, nTrainSamples);
             for (int i = 0; i < nTrainSamples; i++)
@@ -3243,10 +3266,10 @@ bool separateTrainset(const TCmdParams& rCmdParams)
             }
             else
             {
-                float *aControlInputs
+                double *aControlInputs
                         = &aTrainInputs[(nTrainSamples - nControlSamples)
                                         * nTrainInputs];
-                float *aControlTargets = 0;
+                double *aControlTargets = 0;
                 if (nTrainTargets > 0)
                 {
                     aControlTargets
@@ -3371,7 +3394,7 @@ bool CSVtoTrainset(const TCmdParams& rCmdParams)
         return false;
     }
 
-    QList<QVector<float> > aCSVData;
+    QList<QVector<double> > aCSVData;
     nSamples = readCSV(sCSV, nInputs + nOutputs, aCSVData);
     if (nSamples <= 0)
     {
@@ -3386,7 +3409,7 @@ bool CSVtoTrainset(const TCmdParams& rCmdParams)
         return false;
     }
     QDataStream trainsetStream(&trainsetFile);
-    trainsetStream.setFloatingPointPrecision(QDataStream::SinglePrecision);
+    trainsetStream.setFloatingPointPrecision(QDataStream::DoublePrecision);
     if (trainsetStream.status() != QDataStream::Ok)
     {
         cerr << qPrintable(QString(g_szTrainsetWritingError).arg(sTrainSet));
@@ -3418,7 +3441,7 @@ bool CSVtoTrainset(const TCmdParams& rCmdParams)
     }
 
     int iSample, i;
-    QList<QVector<float> >::iterator it = aCSVData.begin();
+    QList<QVector<double> >::iterator it = aCSVData.begin();
     for (iSample = 0; iSample < nSamples; iSample++)
     {
         for (i = 0; i < nInputs; i++)
@@ -3477,7 +3500,7 @@ bool trainsetToCSV(const TCmdParams& rCmdParams)
     QString sTrainSet = rCmdParams["trainset"];
     QString sCSV = rCmdParams["csv"];
     bool result = true;
-    float *aInputs = 0, *aOutputs = 0;
+    double *aInputs = 0, *aOutputs = 0;
 
     QFile csvFile(sCSV);
     if (!csvFile.open(QFile::WriteOnly|QFile::Truncate|QFile::Text))
@@ -3497,10 +3520,10 @@ bool trainsetToCSV(const TCmdParams& rCmdParams)
         }
         if (result)
         {
-            aInputs = new float[nSamples * nInputs];
+            aInputs = new double[nSamples * nInputs];
             if (nOutputs > 0)
             {
-                aOutputs = new float[nSamples * nOutputs];
+                aOutputs = new double[nSamples * nOutputs];
             }
             if (!load_trainset(sTrainSet, aInputs, aOutputs, nSamples, nInputs,
                                nOutputs))
@@ -3600,7 +3623,7 @@ bool processDivergentTrainSamples(const TCmdParams& rCmdParams)
     QString sTrainSet = rCmdParams["trainset"];
     QString sCommandName = rCmdParams["divergent"];
     int nCommandType, nSamples = 0, nInputs = 0, nOutputs = 0;
-    float *aInputs = 0, *aOutputs = 0;
+    double *aInputs = 0, *aOutputs = 0;
     bool result = true;
 
     if (sCommandName.compare(g_szRemoveDivergentSamples,
@@ -3636,8 +3659,8 @@ bool processDivergentTrainSamples(const TCmdParams& rCmdParams)
         }
         if (result)
         {
-            aInputs = new float[nSamples * nInputs];
-            aOutputs = new float[nSamples * nOutputs];
+            aInputs = new double[nSamples * nInputs];
+            aOutputs = new double[nSamples * nOutputs];
             if (!load_trainset(sTrainSet, aInputs, aOutputs, nSamples, nInputs,
                                nOutputs))
             {
@@ -3756,7 +3779,7 @@ bool deleteRepeatingTrainSamples(const TCmdParams& rCmdParams)
 
     QString sTrainSet = rCmdParams["trainset"];
     int nSamples = 0, nInputs = 0, nOutputs = 0;
-    float *aInputs = 0, *aOutputs = 0;
+    double *aInputs = 0, *aOutputs = 0;
     bool result = true;
 
     try
@@ -3769,10 +3792,10 @@ bool deleteRepeatingTrainSamples(const TCmdParams& rCmdParams)
         }
         if (result)
         {
-            aInputs = new float[nSamples * nInputs];
+            aInputs = new double[nSamples * nInputs];
             if (nOutputs > 0)
             {
-                aOutputs = new float[nSamples * nOutputs];
+                aOutputs = new double[nSamples * nOutputs];
             }
             if (!load_trainset(sTrainSet, aInputs, aOutputs, nSamples, nInputs,
                                nOutputs))

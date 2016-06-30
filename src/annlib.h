@@ -34,7 +34,7 @@ typedef enum {taskCLASSIFICATION, taskREGRESSION} TSolvedTask;
 /*****************************************************************************/
 
 /* Выполнить SOFTMAX-нормализацию вектора данных data[] длиной n. */
-void do_softmax_normalization(float data[], int n);
+void do_softmax_normalization(double data[], int n);
 
 /* Перемешивание элементов в некотором массиве длиной nLength путём генерации
 случайных индексов этих элементов aIndexes. */
@@ -45,24 +45,24 @@ void calculate_rand_indexes(int aIndexes[], int nLength);
 функция rand(). */
 inline int get_random_value(int min_value, int max_value)
 {
-    float temp = (generate_random_value() * (max_value - min_value)
-                  + min_value);
+    double temp = (generate_random_value() * (max_value - min_value)
+                   + min_value);
     return round_bond005(temp);
 }
 
 /* Вычислить среднеабсолютную ошибку регрессии */
-float regression_error(float output, float target);
+double regression_error(double output, double target);
 
 /* Сравнить по содержимому два сигнала обучающего множества aSignal1[] и
 aSignal2[] (неважно, входные это сигналы или желаемые выходные) одинакового
 размера nSignalSize. Вернуть true, если все компоненты входных сигналов
 одинаковы, и false, если обнаружены различия */
-bool same_train_signals(const float aSignal1[], const float aSignal2[],
+bool same_train_signals(const double aSignal1[], const double aSignal2[],
                         int nSignalSize);
 
 /* Найти номер максимального компонента в сигнале aSignal[] размером
 nSignalSize. */
-int find_maximum_component(const float aSignal[], int nSignalSize);
+int find_maximum_component(const double aSignal[], int nSignalSize);
 
 /* Загрузить из файла sFileName обучающее множество - набор входных сигналов
 aTrainInputs[] и соответствующих им желаемых выходных сигналов aTrainTargets[],
@@ -78,8 +78,8 @@ nTrainInputs и nTrainTargets.
    Если функция успешно выполнила свою работу, то возвращается true. В случае
 ошибки (например, файл sFileName не существует, или в файле не те данные)
 возвращается false. */
-bool load_trainset(const QString& sFileName, float aTrainInputs[],
-                   float aTrainTargets[], int& nTrainSamples,
+bool load_trainset(const QString& sFileName, double aTrainInputs[],
+                   double aTrainTargets[], int& nTrainSamples,
                    int& nTrainInputs, int& nTrainTargets);
 
 /* Сохранить в файл sFileName заданное обучающее множество. Размеры
@@ -92,8 +92,8 @@ aTrainInputs[] и aTrainTargets[] соответственно.
    Если функция успешно выполнила свою работу, то возвращается true. В случае
 ошибки (например, файл sFileName не существует, или размеры сохраняемого
 обучающего множества невозможны), возвращается false */
-bool save_trainset(const QString& sFileName, float aTrainInputs[],
-                   float aTrainTargets[], int nTrainSamples,
+bool save_trainset(const QString& sFileName, const double aTrainInputs[],
+                   const double aTrainTargets[], int nTrainSamples,
                    int nTrainInputs, int nTrainTargets);
 
 /*****************************************************************************/
@@ -147,15 +147,15 @@ public:
 };
 
 
-typedef enum {LIN, SIG} TActivationKind;
+typedef enum {LIN, SIG, SOFT} TActivationKind;
 
 // Класс для реализации многослойного персептрона
 class CMultilayerPerceptron
 {
 public:
     CMultilayerPerceptron();
-    CMultilayerPerceptron(int nInputs, int nLayers, int aLayerSizes[],
-                          TActivationKind aActivations[]);
+    CMultilayerPerceptron(int nInputs, int nLayers, const int aLayerSizes[],
+                          const TActivationKind aActivations[]);
     CMultilayerPerceptron(const CMultilayerPerceptron& src);
     CMultilayerPerceptron& operator= (const CMultilayerPerceptron& src);
     ~CMultilayerPerceptron();
@@ -165,7 +165,8 @@ public:
     сигналов outputs[].
        Длина последовательности входных сигналов и соответствующей
     последовательности вычисляемых выходных сигналов равна nSamples. */
-    void calculate_outputs(float inputs[], float outputs[], int nSamples);
+    void calculate_outputs(const double inputs[], double outputs[],
+                           int nSamples);
 
     /* Вычисление среднеквадратичного отклонения между последовательностью
     желаемых выходных сигналов targets[] и последовательностью реальных
@@ -174,7 +175,8 @@ public:
        Длина последовательности входных сигналов и соответствующей
     последовательности желаемых выходных сигналов равна nSamples.
        Возвращаемое значение - вычисленное среднеквадратичное отклонение. */
-    float calculate_mse(float inputs[], float targets[], int nSamples);
+    double calculate_mse(const double inputs[], const double targets[],
+                         int nSamples);
 
     /* Вычисление среднеквадратичного отклонения между последовательностью
     желаемых выходных сигналов targets[] и последовательностью реальных
@@ -186,8 +188,8 @@ public:
     задано массивом distribution[] (длина массива равна nSamples - по числу
     примеров в тестовом множестве).
        Возвращаемое значение - вычисленное среднеквадратичное отклонение. */
-    float calculate_mse(float inputs[], float targets[], float distribution[],
-                        int nSamples);
+    double calculate_mse(const double inputs[], const double targets[],
+                         const double distribution[], int nSamples);
 
     /* Вычисление ошибки классификации или регресии в процентах на
     последовательности входных сигналов inputs[]. Желаемые (эталонные) выходные
@@ -195,8 +197,8 @@ public:
        Длина последовательности входных сигналов и соответствующей
     последовательности желаемых выходных сигналов равна nSamples.
        Возвращаемое значение - вычисленная ошибка в процентах (от 0 до 100). */
-    float calculate_error(float inputs[], float targets[], int nSamples,
-                          TSolvedTask task);
+    double calculate_error(const double inputs[], const double targets[],
+                           int nSamples, TSolvedTask task);
 
     /* Вычисление ошибки классификации или регресии в процентах на
     последовательности входных сигналов inputs[]. Желаемые (эталонные) выходные
@@ -207,8 +209,9 @@ public:
     задано массивом distribution[] (длина массива равна nSamples - по числу
     примеров в тестовом множестве).
        Возвращаемое значение - вычисленная ошибка в процентах (от 0 до 100). */
-    float calculate_error(float inputs[],float targets[], float distribution[],
-                          int nSamples, TSolvedTask task);
+    double calculate_error(const double inputs[], const double targets[],
+                           const double distribution[], int nSamples,
+                           TSolvedTask task);
 
     // Инициализировать весовые коэффициенты сети случайными значениями.
     void initialize_weights();
@@ -221,51 +224,51 @@ public:
 
     /* Изменение размеров нейросети (числа входов, числа слоёв, числа
        нейронов в каждом из слоёв) */
-    void resize(int nInputs, int nLayers, int aLayerSizes[],
-                TActivationKind aActivations[]);
+    void resize(int nInputs, int nLayers, const int aLayerSizes[],
+                const TActivationKind aActivations[]);
 
     // Метод доступа к свойству "КОЛИЧЕСТВО ВХОДОВ"
     inline int getInputsCount() const
-        { return m_nInputsCount; };
+        { return m_nInputsCount; }
 
     // Метод доступа к свойству "КОЛИЧЕСТВО СЛОЁВ"
     inline int getLayersCount() const
-        { return m_nLayersCount; };
+        { return m_nLayersCount; }
 
     // Метод доступа к свойству "РАЗМЕРЫ СЛОЁВ"
     inline int getLayerSize(int iLayerNo) const
-        { return m_aLayerSizes[iLayerNo]; };
+        { return m_aLayerSizes[iLayerNo]; }
 
     // Методы доступа к свойству "АКТИВАЦИОННЫЕ ФУНКЦИИ НЕЙРОНОВ В СЛОЯХ"
     inline TActivationKind getActivationKind(int iLayerNo) const
     {
         return m_aActivations[iLayerNo];
-    };
+    }
     inline void setActivationKind(int iLayerNo, TActivationKind kind)
     {
         m_aActivations[iLayerNo] = kind;
-    };
+    }
 
     /* Метод доступа к свойству "РАЗМЕРЫ ВХОДНЫХ СИГНАЛОВ ДЛЯ СЛОЁВ"
        (только для чтения) */
     inline int getInputsCountOfLayer(int iLayerNo) const
     {
         return m_aInputsCount[iLayerNo];
-    };
+    }
 
     // Методы доступа к свойству "ВЕСОВЫЕ КОЭФФИЦИЕНТЫ СЕТИ"
-    inline float getWeight(int iLayerNo, int iNeuronNo, int iWeightNo) const
+    inline double getWeight(int iLayerNo, int iNeuronNo, int iWeightNo) const
     {
         return m_aWeights[m_aIndexesForIDBD[iLayerNo]
                           + iNeuronNo * (m_aInputsCount[iLayerNo] + 1)
                           + iWeightNo];
-    };
+    }
     inline void setWeight(int iLayerNo, int iNeuronNo, int iWeightNo,
-                          float weight)
+                          double weight)
     {
         m_aWeights[m_aIndexesForIDBD[iLayerNo] + iNeuronNo
                    * (m_aInputsCount[iLayerNo] + 1) + iWeightNo] = weight;
-    };
+    }
 
     /* Метод доступа к свойству "ОБЩЕЕ КОЛИЧЕСТВО ВЕСОВ СЕТИ"
        (только для чтения) */
@@ -274,13 +277,13 @@ public:
         return (m_aIndexesForIDBD[m_nLayersCount - 1]
                 + m_aLayerSizes[m_nLayersCount - 1]
                 * (m_aInputsCount[m_nLayersCount - 1] + 1));
-    };
+    }
 private:
     int m_nInputsCount;  // свойство "КОЛИЧЕСТВО ВХОДОВ"
     int m_nLayersCount;  // свойство "КОЛИЧЕСТВО СЛОЁВ"
     int *m_aLayerSizes;  // свойство "РАЗМЕРЫ СЛОЁВ" (массив)
     int *m_aInputsCount; // свойство "РАЗМЕРЫ ВХОДНЫХ СИГНАЛОВ ДЛЯ СЛОЁВ"
-    float *m_aWeights;   // свойство "ВЕСОВЫЕ КОЭФФИЦИЕНТЫ" (3-мерный массив)
+    double *m_aWeights;  // свойство "ВЕСОВЫЕ КОЭФФИЦИЕНТЫ" (3-мерный массив)
     TActivationKind *m_aActivations; /*свойство "АКТИВАЦИОННЫЕ ФУНКЦИИ нейронов
                                        в слоях" (массив: для каждого слоя -
                                        свой тип активационной функции) */
@@ -288,9 +291,9 @@ private:
     int *m_aIndexesForIDBD; /* для каждого слоя - начальный индекс подмассива
                                его весовых коэффициентов в общем массиве
                                m_aWeights */
-    float *m_aTempOutputs; /* промежуточный массив для хранения выходов
+    double *m_aTempOutputs;/* промежуточный массив для хранения выходов
                               текущего слоя */
-    float *m_aTempInputs;  /* промежуточный массив для хранения выходов
+    double *m_aTempInputs; /* промежуточный массив для хранения выходов
                               предыдущего слоя (т.е. входов в текущий слой) */
 
     /* Копирование значений атрибутов другого многослойного персептрона
@@ -304,7 +307,7 @@ private:
     некорректно, генерируется исключение EMLPSizeError.
        Данная операция является private-операций, используемой в конструкторе
     и операции resize для проверки, правильно ли заданы размеры нейросети. */
-    void check_size(int nInputs, int nLayers, int aLayerSizes[]);
+    void check_size(int nInputs, int nLayers, const int aLayerSizes[]);
 };
 
 enum TTrainingState {tsCONTINUE, tsMAXEPOCHS, tsUSER, tsGRADIENT, tsMINIMUM};
@@ -313,7 +316,7 @@ class CTrainingOfMLP: public QObject
 {
     Q_OBJECT
 private:
-    float *m_aWeightsOfTrainSamples;/*распределение весов примеров в обучающем
+    double *m_aWeightsOfTrainSamples;/*распределение весов примеров в обучающем
                                        множестве (сумма весов всех примеров
                                        равна количеству примеров обучающего
                                        множества). */
@@ -321,8 +324,8 @@ private:
                               умолчанию 100). */
     volatile TTrainingState m_state; /* состояние процесса обучения */
 
-    float *m_aTrainInputs;  /* входные сигналы обучающего множества */
-    float *m_aTrainTargets; /* желаемые выходные сигналы обучающего множества*/
+    double *m_aTrainInputs; /* входные сигналы обучающего множества */
+    double *m_aTrainTargets;/* желаемые выходные сигналы обучающего множества*/
     int m_nTrainSamples;    /* количество обучающих примеров (пар "входной
                                сигнал - желаемый выходной сигнал") */
     int *m_aIndexesOfTrainInputs; /* индексы начальных компонент входных
@@ -330,8 +333,8 @@ private:
     int *m_aIndexesOfTrainTargets;/* индексы начальных компонент желаемых
                                      выходных сигналов обучающего множества */
 
-    float *m_aNetOutputs;  /* выходы нейронов обучаемой нейросети */
-    float *m_aNetOutputsD; /* производные выходов нейронов обучаемой
+    double *m_aNetOutputs; /* выходы нейронов обучаемой нейросети */
+    double *m_aNetOutputsD;/* производные выходов нейронов обучаемой
                               нейросети */
     int *m_aNetOutputsI; /* массив начальных индексов выходов каждого слоя */
 
@@ -339,63 +342,63 @@ private:
     void clear_data();
 public:
     CTrainingOfMLP(QObject* pobj = 0);
-    virtual ~CTrainingOfMLP() {};
+    virtual ~CTrainingOfMLP() {}
 
     /* Запустить процесс обучения нейронной сети pTrainedMLP на обучающем
        множестве pTrainSet. */
-    void train(CMultilayerPerceptron *pTrainedMLP, float aTrainInputs[],
-               float aTrainTargets[], int nTrainSamples);
+    void train(CMultilayerPerceptron *pTrainedMLP, double aTrainInputs[],
+               double aTrainTargets[], int nTrainSamples);
 
     /* Запустить процесс обучения нейронной сети pTrainedMLP на обучающем
        множестве pTrainSet. Распределение вероятности примеров задано
        массивом sDistribution[]. */
-    void train(CMultilayerPerceptron *pTrainedMLP, float aTrainInputs[],
-               float aTrainTargets[], float aDistribution[],int nTrainSamples);
+    void train(CMultilayerPerceptron *pTrainedMLP, double aTrainInputs[],
+               double aTrainTargets[], double aDistribution[],int nTrainSamples);
 
     // Методы доступа к свойству "МАКСИМАЛЬНОЕ ЧИСЛО ЭПОХ"
-    inline int getMaxEpochsCount() const { return m_nMaxEpochsCount; };
+    inline int getMaxEpochsCount() const { return m_nMaxEpochsCount; }
     void setMaxEpochsCount(int nMaxEpochsCount);
 protected:
     CMultilayerPerceptron *m_pTrainedMLP;
 
     /* Функция возвращает размер обучающего множества (количество обучающих
     примеров в нём) */
-    inline int getNumberOfTrainSamples() { return m_nTrainSamples; };
+    inline int getNumberOfTrainSamples() { return m_nTrainSamples; }
 
     /* Функция возвращает iInput-й компонент входного сигнала в iSample-ом
     обучающем примере. */
-    inline float getTrainInput(int iSample, int iInput)
+    inline double getTrainInput(int iSample, int iInput)
     {
         return m_aTrainInputs[m_aIndexesOfTrainInputs[iSample] + iInput];
-    };
+    }
 
     /* Функция возвращает iTarget-й компонент желаемого выходного сигнала
     в iSample-ом обучающем примере. */
-    inline float getTrainTarget(int iSample, int iTarget)
+    inline double getTrainTarget(int iSample, int iTarget)
     {
         return m_aTrainTargets[m_aIndexesOfTrainTargets[iSample] + iTarget];
-    };
+    }
 
     /* Функция возвращает вес iSample-го примера обучающего множества*/
-    inline float getSampleWeight(int iSample) const
+    inline double getSampleWeight(int iSample) const
     {
         return m_aWeightsOfTrainSamples[iSample];
-    };
+    }
 
     /* Функция возвращает значение выхода iNeuron-го нейрона iLayer-го слоя
     обучаемой нейросети после подачи на её входы очередного примера обучающего
     множества (с помощью функции calculate_outputs). */
-    inline float getNetOutput(int iLayer, int iNeuron) const
+    inline double getNetOutput(int iLayer, int iNeuron) const
     {
         return m_aNetOutputs[m_aNetOutputsI[iLayer] + iNeuron];
     }
     /* Функция возвращает значение производной выхода iNeuron-го нейрона
     iLayer-го слоя обучаемой нейросети после подачи на её входы очередного
     примера обучающего множества (с помощью функции calculate_outputs). */
-    inline float getNetOutputD(int iLayer, int iNeuron) const
+    inline double getNetOutputD(int iLayer, int iNeuron) const
     {
         return m_aNetOutputsD[m_aNetOutputsI[iLayer] + iNeuron];
-    };
+    }
 
     /* Подать на вход нейросети pNet входной сигнал из текущего примера
     обучающего множества и вычислить выходы и производные выходов всех нейронов
@@ -412,8 +415,8 @@ protected:
     вычисляются выходы нейронов обучаемой нейросети m_pTrainedNet. */
     void calculate_outputs(int iSample, CMultilayerPerceptron* pNet = 0);
 
-    virtual void initialize_training() {};
-    virtual void finalize_training() {};
+    virtual void initialize_training() {}
+    virtual void finalize_training() {}
     virtual TTrainingState do_epoch(int nEpoch) = 0;
 signals:
     void start_training();
@@ -423,7 +426,7 @@ public slots:
     void stop_training_state()
     {
         m_state = tsUSER;
-    };
+    }
 };
 
 /* Класс для реализации алгоритма обучения по методу стохастического обратного
@@ -450,36 +453,36 @@ public:
     //virtual ~COnlineBackpropTraining();
 
     // Методы доступа к свойству "НАЧАЛЬНЫЙ КОЭФФИЦИЕНТ СКОРОСТИ ОБУЧЕНИЯ"
-    inline float getStartLearningRateParam() { return m_startRate; };
-    void setStartLearningRateParam(float value);
+    inline double getStartLearningRateParam() { return m_startRate; }
+    void setStartLearningRateParam(double value);
 
     // Методы доступа к свойству "КОНЕЧНЫЙ КОЭФФИЦИЕНТ СКОРОСТИ ОБУЧЕНИЯ"
-    inline float getFinalLearningRateParam() { return m_finalRate; };
-    void setFinalLearningRateParam(float value);
+    inline double getFinalLearningRateParam() { return m_finalRate; }
+    void setFinalLearningRateParam(double value);
 
     // Методы доступа к свойству "ПАРАМЕТР АДАПТАЦИИ СКОРОСТИ ОБУЧЕНИЯ"
-    inline float getTheta() { return m_theta; };
-    void setTheta(float value);
+    inline double getTheta() { return m_theta; }
+    void setTheta(double value);
 
     // Методы доступа к свойству "АДАПТИВНОСТЬ СКОРОСТИ ОБУЧЕНИЯ"
-    inline bool getAdaptiveRate() { return m_bAdaptiveRate; };
+    inline bool getAdaptiveRate() { return m_bAdaptiveRate; }
     void setAdaptiveRate(bool value);
 private:
-    float m_rate;  // свойство "КОЭФФИЦИЕНТ СКОРОСТИ ОБУЧЕНИЯ"
-    float m_startRate; // свойство "НАЧАЛЬНЫЙ КОЭФФИЦИЕНТ СКОРОСТИ ОБУЧЕНИЯ"
-    float m_finalRate; // свойство "КОНЕЧНЫЙ КОЭФФИЦИЕНТ СКОРОСТИ ОБУЧЕНИЯ"
-    float m_theta; // свойство "ПАРАМЕТР АДАПТАЦИИ СКОРОСТИ ОБУЧЕНИЯ"
+    double m_rate; // свойство "КОЭФФИЦИЕНТ СКОРОСТИ ОБУЧЕНИЯ"
+    double m_startRate;// свойство "НАЧАЛЬНЫЙ КОЭФФИЦИЕНТ СКОРОСТИ ОБУЧЕНИЯ"
+    double m_finalRate;// свойство "КОНЕЧНЫЙ КОЭФФИЦИЕНТ СКОРОСТИ ОБУЧЕНИЯ"
+    double m_theta; // свойство "ПАРАМЕТР АДАПТАЦИИ СКОРОСТИ ОБУЧЕНИЯ"
     bool m_bAdaptiveRate;  // свойство "АДАПТИВНОСТЬ СКОРОСТИ ОБУЧЕНИЯ"
 
     int *m_aIndexesOfTrainSamples; /* массив случайно перемешанных индексов
                                       обучающих примеров */
 
-    float *m_aLocalGradients1, *m_aLocalGradients2;
+    double *m_aLocalGradients1, *m_aLocalGradients2;
 
     int *m_aIndexesForIDBD; /* для каждого слоя - начальный индекс подмассивов
                                его коэффициентов "Betta" и "H" в общих массивах
                                m_aBetta и m_aH соответственно */
-    float *m_aBetta, *m_aH; /* Свойства "Betta" и "H", используемые в
+    double *m_aBetta, *m_aH;/* Свойства "Betta" и "H", используемые в
                                алгоритме адаптации скорости обучения */
 
     /* Выполнить корректировку весов сети по классическому алгоритму Online
@@ -494,35 +497,35 @@ private:
 
     /* Методы доступа к свойству "Betta" (данное свойство используется при
     обучении с адаптацией скорости) */
-    inline float getBetta(int iLayerNo, int iNeuronNo, int iWeightNo)
+    inline double getBetta(int iLayerNo, int iNeuronNo, int iWeightNo)
         {
             return m_aBetta[m_aIndexesForIDBD[iLayerNo] + iNeuronNo
                             * (m_pTrainedMLP->getInputsCountOfLayer(iLayerNo)
                                + 1)
                             + iWeightNo];
-        };
+        }
     inline void setBetta(int iLayerNo, int iNeuronNo, int iWeightNo,
-                         float value)
+                         double value)
         {
             m_aBetta[m_aIndexesForIDBD[iLayerNo] + iNeuronNo
                      * (m_pTrainedMLP->getInputsCountOfLayer(iLayerNo) + 1)
                      + iWeightNo] = value;
-        };
+        }
 
     /* Методы доступа к свойству "H" (данное свойство используется при
     обучении с адаптацией скорости) */
-    inline float getH(int iLayerNo, int iNeuronNo, int iWeightNo)
+    inline double getH(int iLayerNo, int iNeuronNo, int iWeightNo)
         {
             return m_aH[m_aIndexesForIDBD[iLayerNo] + iNeuronNo
                         * (m_pTrainedMLP->getInputsCountOfLayer(iLayerNo) + 1)
                         + iWeightNo];
-        };
-    inline void setH(int iLayerNo, int iNeuronNo, int iWeightNo, float value)
+        }
+    inline void setH(int iLayerNo, int iNeuronNo, int iWeightNo, double value)
         {
             m_aH[m_aIndexesForIDBD[iLayerNo] + iNeuronNo
                  * (m_pTrainedMLP->getInputsCountOfLayer(iLayerNo) + 1)
                  + iWeightNo] = value;
-        };
+        }
 
     /* Инициализировать значения параметров "Betta" и "H", определяющих процесс
     адаптации коэффициентов скорости обучения для каждого весового коэффициента
@@ -568,32 +571,32 @@ public:
     CBatchBackpropTraining(QObject* pobj = 0);
     ~CBatchBackpropTraining();
 
-    inline float getEpsilon() { return m_epsilon; };
-    void setEpsilon(float value);
+    inline double getEpsilon() { return m_epsilon; }
+    void setEpsilon(double value);
 private:
-    float *m_aMeanG; /* свойство "ВЕКТОР СУММАРНОГО ГРАДИЕНТА" (вектор
+    double *m_aMeanG;/* свойство "ВЕКТОР СУММАРНОГО ГРАДИЕНТА" (вектор
                         суммарного градиента вычисляется на основе всех
                         примеров обучающего множества; компонент вектора
                         насчитывается столько, сколько синаптических
                         весов и смещений сети) */
-    float *m_aCurG;  /* свойство "ВЕКТОР ТЕКУЩЕГО ГРАДИЕНТА" (вектор
+    double *m_aCurG; /* свойство "ВЕКТОР ТЕКУЩЕГО ГРАДИЕНТА" (вектор
                         текущего градиента вычисляется на основе одного,
                         текущего, примера обучающего множества; компонент
                         вектора насчитывается столько, сколько
                        синаптических весов и смещений сети) */
 
-    float *m_aLocalGradients1, *m_aLocalGradients2;
+    double *m_aLocalGradients1, *m_aLocalGradients2;
     int *m_aGradientIndexes; /* для каждого слоя - начальный индекс подмассивов
                                 его компонент вектора градиента в общем массиве
                                 m_aMeanG и m_aCurG */
 
-    float m_initGradientNorm;/* евклидова норма вектора суммарного градиента
+    double m_initGradientNorm;/*евклидова норма вектора суммарного градиента
                                 m_aMeanG, вычисленная перед первой эпохой */
-    float m_meanGradientNorm;/* евклидова норма вектора суммарного градиента
+    double m_meanGradientNorm;/*евклидова норма вектора суммарного градиента
                                 m_aMeanG */
-    float m_meanError;       /* средняя ошибка нейросети на обучающем
+    double m_meanError;      /* средняя ошибка нейросети на обучающем
                                 множестве */
-    float m_epsilon; /* критерий останова обучения: если выполняется нер-во
+    double m_epsilon;/* критерий останова обучения: если выполняется нер-во
                         m_meanGradientNorm < m_epsilon * m_initGradientNorm,
                         то обучение завершается. */
 
@@ -602,19 +605,19 @@ private:
     void calculate_cur_gradient(int iSample);
 
     /* Методы доступа к свойству "CurG" (вектор текущего градиента) */
-    inline float getCurGradient(int iLayerNo, int iNeuronNo, int iWeightNo)
+    inline double getCurGradient(int iLayerNo, int iNeuronNo, int iWeightNo)
     {
         return m_aCurG[m_aGradientIndexes[iLayerNo] + iNeuronNo
                        * (m_pTrainedMLP->getInputsCountOfLayer(iLayerNo) + 1)
                        + iWeightNo];
-    };
+    }
     inline void setCurGradient(int iLayerNo, int iNeuronNo, int iWeightNo,
-                               float value)
+                               double value)
     {
         m_aCurG[m_aGradientIndexes[iLayerNo] + iNeuronNo
                 * (m_pTrainedMLP->getInputsCountOfLayer(iLayerNo) + 1)
                 + iWeightNo] = value;
-    };
+    }
 protected:
     void initialize_training();
     void finalize_training();
@@ -624,18 +627,18 @@ protected:
     virtual void change_weights(int nEpoch, TTrainingState& training_state)=0;
 
     /* Функция возвращает элемент вектора суммарного градиента. */
-    inline float getMeanGradient(int iLayerNo, int iNeuronNo, int iWeightNo)
+    inline double getMeanGradient(int iLayerNo, int iNeuronNo, int iWeightNo)
     {
         return m_aMeanG[m_aGradientIndexes[iLayerNo] + iNeuronNo
                         * (m_pTrainedMLP->getInputsCountOfLayer(iLayerNo) + 1)
                         + iWeightNo];
-    };
+    }
 
     // Метод возвращает значение эвклидовой нормы вектора суммарного градиента
-    inline float getMeanGradientNorm() { return m_meanGradientNorm; };
+    inline double getMeanGradientNorm() { return m_meanGradientNorm; }
 
     //Метод возвращает значение средней ошибки нейросети на обучающем множестве
-    inline float getMeanError() { return m_meanError; };
+    inline double getMeanError() { return m_meanError; }
 };
 
 /* Класс для реализации алгоритма обучения по методу "упругого" обратного
@@ -649,22 +652,22 @@ public:
     ~CResilientBackpropTraining();
 
     // Методы доступа к свойству "НАЧАЛЬНОЕ ЗНАЧЕНИЕ СКОРОСТИ ОБУЧЕНИЯ"
-    inline float getInitialLearningRate() { return m_initLearningRate; };
-    void setInitialLearningRate(float learning_rate);
+    inline double getInitialLearningRate() { return m_initLearningRate; }
+    void setInitialLearningRate(double learning_rate);
 
     // Получение минимально допустимого значения скорости обучения
-    inline float getMinLearningRate() { return m_minLearningRate; };
+    inline double getMinLearningRate() { return m_minLearningRate; }
 
     // Получение максимально допустимого значения скорости обучения
-    inline float getMaxLearningRate() { return m_maxLearningRate; };
+    inline double getMaxLearningRate() { return m_maxLearningRate; }
 private:
-    float m_minLearningRate;
-    float m_maxLearningRate;
-    float m_initLearningRate;// свойство "НАЧАЛЬНОЕ ЗНАЧЕНИЕ СКОРОСТИ ОБУЧЕНИЯ"
-    float *m_aRates; /* свойство "ТЕКУЩИЕ КОЭФФИЦИЕНТЫ СКОРОСТИ ОБУЧЕНИЯ"
+    double m_minLearningRate;
+    double m_maxLearningRate;
+    double m_initLearningRate;// свойство "НАЧАЛЬНОЕ ЗНАЧЕНИЕ СКОРОСТИ ОБУЧЕНИЯ"
+    double *m_aRates;/* свойство "ТЕКУЩИЕ КОЭФФИЦИЕНТЫ СКОРОСТИ ОБУЧЕНИЯ"
                         (индивидуальные для каждого синаптического веса и
                         смещения обучаемой сети) */
-    float *m_aPrevG; // предыдущий вектор суммарного градиента обучаемой сети
+    double *m_aPrevG;// предыдущий вектор суммарного градиента обучаемой сети
 protected:
     void change_weights(int nEpoch, TTrainingState& training_state);
 
@@ -693,29 +696,29 @@ public:
     ~CGradientDescentTraining();
 
     /* Методы доступа к свойству "МАКСИМАЛЬНОЕ ЗНАЧЕНИЕ СКОРОСТИ ОБУЧЕНИЯ". */
-    inline float getMaxLearningRate() { return m_maxLearningRate; };
-    void setMaxLearningRate(float value);
+    inline double getMaxLearningRate() { return m_maxLearningRate; }
+    void setMaxLearningRate(double value);
 
-    inline bool isConjugateGradient() { return m_bConjugateGradient; };
+    inline bool isConjugateGradient() { return m_bConjugateGradient; }
     inline void setConjugateGradient(bool value)
     {
         m_bConjugateGradient = value;
-    };
+    }
 
     /* Методы доступа к свойству "МАКС.ЧИСЛО ИТЕРАЦИЙ ДЛЯ НАХОЖДЕНИЯ
     ОПТИМАЛЬНОЙ СКОРОСТИ ОБУЧЕНИЯ" */
-    inline int getMaxItersForLR() { return m_nMaxItersForLR; };
+    inline int getMaxItersForLR() { return m_nMaxItersForLR; }
     void setMaxItersForLR(int value);
 private:
     bool m_bConjugateGradient; /* используется ли метод сопряжённых градиентов
                                   для выбора оптимального направления на
                                   очередном шаге? */
-    float m_maxLearningRate;// свойство "МАКС. ЗНАЧЕНИЕ СКОРОСТИ ОБУЧЕНИЯ"
+    double m_maxLearningRate;// свойство "МАКС. ЗНАЧЕНИЕ СКОРОСТИ ОБУЧЕНИЯ"
     int m_nMaxItersForLR; /* свойство "МАКС.ЧИСЛО ИТЕРАЦИЙ ДЛЯ НАХОЖДЕНИЯ
                              ОПТИМАЛЬНОЙ СКОРОСТИ ОБУЧЕНИЯ" */
 
-    float *m_aDirection; // вектор направления оптимизации весов сети
-    float *m_aOldG; // старое значение суммарного вектора градиента
+    double *m_aDirection;// вектор направления оптимизации весов сети
+    double *m_aOldG;// старое значение суммарного вектора градиента
     CMultilayerPerceptron* m_pTempMLP;/*"временная" нейросеть, используемая
                                          как вспомогательная переменная при
                                          выборе длины шага по методу
@@ -726,25 +729,25 @@ private:
        направлении m_aDirection[] (критерием оптимальности выступает ошибка
        обучения etr, которую надо минимизировать). Если такие точки найдены,
        возвращается true, в противном случае - false. */
-    bool find_init_lrs(float& lr1, float& lr2, float& lr3,
-                       float& etr1, float& etr2, float& etr3);
+    bool find_init_lrs(double& lr1, double& lr2, double& lr3,
+                       double& etr1, double& etr2, double& etr3);
 
     /* Найти длину оптимального шага lr в заданном направлении m_aDirection[]
        по методу Брента (критерием оптимальности выступает ошибка обучения etr,
        которую надо минимизировать). В качестве стартовых точек метода Брента
        используются (lr1; etr1), (lr2; etr2) и (lr3; etr3). */
-    void find_optimal_lr_by_brent(float lr1, float lr2, float lr3, float tol,
-                                  float& lr, float& etr);
+    void find_optimal_lr_by_brent(double lr1, double lr2, double lr3, double tol,
+                                  double& lr, double& etr);
 
     /* Найти оптимальный шаг в заданном направлении m_aDirection по методу
        Брента. Найденное значение оптимального шага записывается в передаваемый
        по ссылке аргумент lr, а соответствующее значение целевой функции
        (функции ошибки) - в передаваемый по ссылке аргумент etr. */
-    void find_optimal_learning_rate(float& lr, float& etr);
+    void find_optimal_learning_rate(double& lr, double& etr);
 
     /* Вычислить среднеквадратичную ошибку обучения как функцию от длины шага
        stepsize в направлении m_aDirection. */
-    float calculate_training_error(float stepsize);
+    double calculate_training_error(double stepsize);
 protected:
     // Выделить память для всех промежуточных переменных и инициализировать их
     void initialize_training();

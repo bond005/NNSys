@@ -91,30 +91,30 @@ private:
     bool  m_bShowGeneralizationError;/* надо ли в протокол выводить ошибку
                                         обобщения после каждой эпохи */
 
-    float *m_aTrainInputs; /* обучающее множество: входные сигналы */
-    float *m_aTrainTargets;/* обучающее множество: желаемые выходные сигналы */
+    double *m_aTrainInputs; /*обучающее множество: входные сигналы */
+    double *m_aTrainTargets;/*обучающее множество: желаемые выходные сигналы */
     int m_nTrainSamples;   /* обучающее множествоЖ количество примеров */
-    float *m_aControlInputs;   /* контрольное множество: входные сигналы */
-    float *m_aControlTargets;  /* контрольное множество: желаемые выходные
+    double *m_aControlInputs;  /* контрольное множество: входные сигналы */
+    double *m_aControlTargets; /* контрольное множество: желаемые выходные
                                   сигналы */
     int m_nControlSamples;     /* контрольное множествоЖ количество примеров */
     bool m_bControlSetIsLoaded;/* контрольное множество было загружено из
                                   файла, а не выделено из обучающего
                                   множества */
 
-    float m_goalError; /* целевая ошибка (обучения или обобщения), при
+    double m_goalError;/* целевая ошибка (обучения или обобщения), при
                           достижении которой обучение пора прекращать (данный
                           критерий останова может комбинироваться с критерием
                           раннего останова) */
 
-    float *m_aGeneralizationErrors;/* траектория ошибки обобщения */
+    double *m_aGeneralizationErrors;/*траектория ошибки обобщения */
     int    m_nMedfiltOrder;        /* порядок медианного фильтра для
                                       сглаживания траектории ошибки
                                       обобщения */
-    float *m_aMedfiltBuffer;
-    float m_oldMedian;
+    double *m_aMedfiltBuffer;
+    double m_oldMedian;
 
-    float m_minError;
+    double m_minError;
 
     /* Вычислить ошибку обобщения после m_nEpochsCount-й эпохи обучения */
     void calc_generalization_error();

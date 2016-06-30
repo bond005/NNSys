@@ -33,7 +33,7 @@ private:
     QString m_sErrorMsg;
 public:
     EIncorrectArg(int iArg) throw();
-    virtual ~EIncorrectArg() throw() {};
+    virtual ~EIncorrectArg() throw() {}
     virtual const char* what() const throw();
 };
 

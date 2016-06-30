@@ -56,7 +56,7 @@ static const char* g_szStoppingByGeneralizationError = "Обучение ост�
 static const char* g_szEpochDuration        = "Средняя продолжительность "\
         "одной эпохи обучения составила %1 сек.";
 static const char* g_szEpochDurationDetails = "При этом собственно обучение "\
-        "заняло %1 сек, а тестирование (вычисление ошибки) заняло %1 сек.";
+        "заняло %1 сек, а тестирование (вычисление ошибки) заняло %2 сек.";
 static const char* g_szNewRestart = "Запущен %1-й рестарт процесса обучения.";
 
 using namespace std;
@@ -293,8 +293,8 @@ bool CTrainerForMLP::initialize_params(const TCmdParams& rParams)
             if (result)
             {
                 m_nTrainSamples = nTrainSamples;
-                m_aTrainInputs = new float[m_nTrainSamples * nTrainInputs];
-                m_aTrainTargets = new float[m_nTrainSamples * nTrainTargets];
+                m_aTrainInputs = new double[m_nTrainSamples * nTrainInputs];
+                m_aTrainTargets = new double[m_nTrainSamples * nTrainTargets];
                 if (!load_trainset(
                         rParams["train"], m_aTrainInputs, m_aTrainTargets,
                         nTrainSamples, nTrainInputs, nTrainTargets))
@@ -350,10 +350,10 @@ bool CTrainerForMLP::initialize_params(const TCmdParams& rParams)
             {
                 m_nControlSamples = nControlSamples;
                 m_bControlSetIsLoaded = true;
-                m_aControlInputs = new float[m_nControlSamples
-                                             * nControlInputs];
-                m_aControlTargets = new float[m_nControlSamples
-                                              * nControlTargets];
+                m_aControlInputs = new double[
+                        m_nControlSamples * nControlInputs];
+                m_aControlTargets = new double[
+                        m_nControlSamples * nControlTargets];
                 if (!load_trainset(
                         rParams["control"], m_aControlInputs,m_aControlTargets,
                         nControlSamples, nControlInputs, nControlTargets))
@@ -693,7 +693,7 @@ bool CTrainerForMLP::initialize_params(const TCmdParams& rParams)
                     m_pTrainingAlgorithm->setMaxEpochsCount(nMaxEpochs);
                     if (m_bEarlyStopping || m_bShowGeneralizationError)
                     {
-                        m_aGeneralizationErrors = new float[nMaxEpochs + 1];
+                        m_aGeneralizationErrors = new double[nMaxEpochs + 1];
                     }
                 }
                 else
@@ -823,7 +823,7 @@ bool CTrainerForMLP::initialize_params(const TCmdParams& rParams)
                 if (rParams.contains("lr_max"))
                 {
                     nReadArgsCount--;
-                    float learning_rate = rParams["lr_max"].toFloat(&result);
+                    double learning_rate = rParams["lr_max"].toFloat(&result);
                     if (result)
                     {
                         if (learning_rate > 0.0)
@@ -958,7 +958,7 @@ bool CTrainerForMLP::initialize_params(const TCmdParams& rParams)
                 if (rParams.contains("lr"))
                 {
                     nReadArgsCount--;
-                    float learning_rate = rParams["lr"].toFloat(&result);
+                    double learning_rate = rParams["lr"].toFloat(&result);
                     if (result)
                     {
                         if (learning_rate > 0.0)
@@ -995,7 +995,7 @@ bool CTrainerForMLP::initialize_params(const TCmdParams& rParams)
                     if (rParams.contains("theta"))
                     {
                         nReadArgsCount--;
-                        float theta = rParams["theta"].toFloat(&result);
+                        double theta = rParams["theta"].toFloat(&result);
                         if (result)
                         {
                             if (theta > 0.0)
@@ -1045,7 +1045,7 @@ bool CTrainerForMLP::initialize_params(const TCmdParams& rParams)
                     if (rParams.contains("lr"))
                     {
                         nReadArgsCount--;
-                        float lr = rParams["lr"].toFloat(&result);
+                        double lr = rParams["lr"].toFloat(&result);
                         if (result)
                         {
                             if (lr > 0.0)
@@ -1281,16 +1281,16 @@ bool CTrainerForMLP::divide_between_train_and_control_sets(const double& r)
     int i, j;
     bool result = true;
     int *aTrainIndexes = 0;
-    float *aTempTrainSample = 0;
+    double *aTempTrainSample = 0;
     int nTrainInputs = m_TrainedNet.getInputsCount();
     int nTrainTargets = m_TrainedNet.getLayerSize(
             m_TrainedNet.getLayersCount() - 1);
-    size_t nTrainInputSize = nTrainInputs * sizeof(float);
-    size_t nTrainTargetSize = nTrainTargets * sizeof(float);
+    size_t nTrainInputSize = nTrainInputs * sizeof(double);
+    size_t nTrainTargetSize = nTrainTargets * sizeof(double);
     try
     {
-        aTempTrainSample = new float[nTrainInputs + nTrainTargets];
-        //cerr << "aTempTrainSample = new float[nTrainInputs + nTrainTargets];\n"; // for debug
+        aTempTrainSample = new double[nTrainInputs + nTrainTargets];
+        //cerr << "aTempTrainSample = new double[nTrainInputs + nTrainTargets];\n"; // for debug
         aTrainIndexes = new int[m_nTrainSamples];
         //cerr << "aTrainIndexes = new int[m_nTrainSamples];\n"; // for debug
         calculate_rand_indexes(aTrainIndexes, m_nTrainSamples);
@@ -1375,10 +1375,10 @@ void CTrainerForMLP::start_training()
     }
     if (m_bEarlyStopping && (m_nMedfiltOrder >= 1))
     {        
-        m_aMedfiltBuffer = new float[m_nMedfiltOrder];
+        m_aMedfiltBuffer = new double[m_nMedfiltOrder];
     }
 
-    float cur_error = m_minError;
+    double cur_error = m_minError;
 
     if (m_bDoLogging)
     {
@@ -1487,7 +1487,7 @@ void CTrainerForMLP::start_training()
 void CTrainerForMLP::do_training_epoch(int nEpochsCount)
 {
     bool can_continue = true;
-    float training_error = 0.0;
+    double training_error = 0.0;
 
     m_nEpochsCount = nEpochsCount;
     update_training_duration();
@@ -1652,7 +1652,7 @@ void CTrainerForMLP::end_training(TTrainingState state)
                     mean_training_duration + mean_control_duration);
         cout << qPrintable(sInfoMsg) << endl;
         sInfoMsg = QString(g_szEpochDurationDetails).arg(
-                    mean_training_duration, mean_control_duration);
+                    mean_training_duration).arg(mean_control_duration);
         cout << qPrintable(sInfoMsg) << endl;
     }
 }
