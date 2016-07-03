@@ -2981,7 +2981,7 @@ bool useMLP(const TCmdParams& rCmdParams)
 
         if (result && rCmdParams.contains("out"))
         {
-            aResultInputs = new double[nTestSamples * nTestTargets];
+            aResultInputs = new double[nTestSamples * nOutputsCount];
         }
         if (result && (nTestTargets > 0))
         {
@@ -3053,7 +3053,7 @@ bool useMLP(const TCmdParams& rCmdParams)
                 end_time = time(0);
             }
             if (!save_trainset(rCmdParams["out"], aResultInputs, 0,
-                               nTestSamples, nTestTargets, 0))
+                               nTestSamples, nOutputsCount, 0))
             {
                 result = false;
                 cerr << qPrintable(QString(g_szDatasetWritingError).arg(
